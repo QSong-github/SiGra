@@ -122,20 +122,17 @@ python3 -W ignore train_visium.py --test_only 1 --save_path ../checkpoint/10x_fi
 1. for NanoString CosMx dataset
 The hyperparameters were manually selected in individual datasets
 ```
-e.g.
 python3 train.py --data nanostring --test_only 0 --save_path ../checkpoint/nanostring_train/ --seed 1234 --epochs 900 --lr 1e-3 
 ```
 
 2. for Vizgen MERSCOPE dataset
 ```
-e.g.
 python3 train.py --data merscope --test_only 0 --save_path ../checkpoint/merscope_train/ --seed 1234 --epochs 1000 --lr 1e-3 
 ```
 
 
 3. for 10x Visium dataset
 ```
-e.g.
 python3 train.py --data visium --test_only 0 --save_path ../checkpoint/10x_train/ --seed 1234 --epochs 600 --lr 1e-3 --id 151507 --ncluster 7 --repeat 1
 ```
 
