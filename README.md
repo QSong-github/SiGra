@@ -26,6 +26,17 @@ scipy==1.8.1
 scikit_learn==1.1.1
 torch_geometric==2.0.4
 ```
+## Installation
+
+Download scGCN:
+```
+git clone https://github.com/QSong-github/scGCN
+```
+Install requirements and scGCN:
+
+```bash
+python setup.py install
+```
 
 ## Dataset Setting
 ### NanoString CosMx SMI 
@@ -78,43 +89,33 @@ SiGra
 ```
 
 
-### Preprocess data
-To convert the orignial datasets to SiGra input:
-1. download the raw data and listed as the above data folder sturcture
-2. go the /path/scGIT/src
-3. run the code
-```
-python3 processing_10x.py
-python3 processing_nanostring.py
-python3 processing_merscope.py
-```
 ### Tutorial for SiGra
-1. Data processing: XXX
-2. Run SiGra: XXX
-3. Output data visualization: XXX
+1. Data processing: [here](https://github.com/QSong-github/SiGra/blob/main/Tutorials/SiGra_preprocess.ipynb)
+2. Run SiGra: [here](https://github.com/QSong-github/SiGra/blob/main/Tutorials/SiGra_train.ipynb)
+3. Output data visualization: [here](https://github.com/QSong-github/SiGra/blob/main/Tutorials/SiGra_visualize.ipynb)
 
 ## Quick Start
 
 ### Download our intermeidate results and checkpoints for inference
 download the [checkpoints](https://purdue0-my.sharepoint.com/:u:/g/personal/tang385_purdue_edu/EZnAbrQm59dPtGKtSgSUBDABGGW86kh3ur6zZ2e-hVFWXQ?e=MWlkwB) and put them into the above roots.
-### Inference tutorials
-1. for nanostring dataset
+
+### Reproduction instructions
+1. for NanoString CosMx dataset
 The results will be stored in "/path/siGra/results/nanostring/"
 ```
-python3 train_nano_all.py --test_only 1 --save_path ../checkpoint/nanostring_final/ --pretrain final.pth
+python3 train_nanostring.py --test_only 1 --save_path ../checkpoint/nanostring_final/ --pretrain final.pth
 ```
 
-2. for merscope dataset
+2. for Vizgen MERSCOPE dataset
 The reuslts will be stored in /path/siGra/reuslts/merscope/
 ```
-python3 train_merscope_all.py --test_only 1 --save_path ../checkpoint/merscope_final/ --pretrain final.pth
+python3 train_merscope.py --test_only 1 --save_path ../checkpoint/merscope_final/ --pretrain final.pth
 ```
 
-
-3. for 10x dataset
+3. for 10x Visium dataset
 The results will be stored in "/path/siGra/results/10x_final/"
 ```
-python3 -W ignore train_10x.py --test_only 1 --save_path ../checkpoint/10x_final/ --id 151507 --ncluster 7
+python3 -W ignore train_visium.py --test_only 1 --save_path ../checkpoint/10x_final/ --id 151507 --ncluster 7
 ```
 or 
 ```
@@ -122,27 +123,26 @@ bash test_10x.sh
 ```
 
 ## Train from scratch
+
 ### Training tutorials
-1. for nanostring dataset
+
+1. for NanoString CosMx dataset
 The hyperparameters were manually selected in individual datasets
 ```
 e.g.
-python3 train_nano_all.py --test_only 0 --save_path ../checkpoint/nanostring_train/ --seed 1234 --epochs 900 --lr 1e-3 
+python3 train.py --data nanostring --test_only 0 --save_path ../checkpoint/nanostring_train/ --seed 1234 --epochs 900 --lr 1e-3 
 ```
 
-2. for merscope dataset
+2. for Vizgen MERSCOPE dataset
 ```
 e.g.
-python3 train_merscope_all.py --test_only 0 --save_path ../checkpoint/merscope_train/ --seed 1234 --epochs 1000 --lr 1e-3 
+python3 train.py --data merscope --test_only 0 --save_path ../checkpoint/merscope_train/ --seed 1234 --epochs 1000 --lr 1e-3 
 ```
 
 
-3. for 10x dataset
+3. for 10x Visium dataset
 ```
 e.g.
-python3 train_10x.py --test_only 0 --save_path ../checkpoint/10x_train/ --seed 1234 --epochs 600 --lr 1e-3 --id 151507 --ncluster 7 --repeat 1
+python3 train.py --data visium --test_only 0 --save_path ../checkpoint/10x_train/ --seed 1234 --epochs 600 --lr 1e-3 --id 151507 --ncluster 7 --repeat 1
 ```
-or 
-```
-bash train_10x.sh
-```
+
