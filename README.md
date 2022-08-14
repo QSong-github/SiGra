@@ -116,10 +116,7 @@ The results will be stored in "/path/siGra/results/10x_final/"
 ```
 python3 -W ignore train_visium.py --test_only 1 --save_path ../checkpoint/10x_final/ --id 151507 --ncluster 7
 ```
-or 
-```
-bash test_10x.sh
-```
+
 
 ## Train from scratch
 
