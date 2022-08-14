@@ -1,0 +1,21 @@
+# /usr/bin/bash
+python3 -W ignore train_nanostring.py --test_only 1 --id fov1 --img_name F001 --ncluster 8        # 0.43 0.75
+python3 -W ignore train_nanostring.py --test_only 1 --id fov2 --img_name F002 --ncluster 8        # 0.41 0.890625
+python3 -W ignore train_nanostring.py --test_only 1 --id fov3 --img_name F003 --ncluster 8        # 0.33 0.703125
+python3 -W ignore train_nanostring.py --test_only 1 --id fov4 --img_name F004 --ncluster 8        # 0.37 0.140625
+python3 -W ignore train_nanostring.py --test_only 1 --id fov5 --img_name F005 --ncluster 4       # 0.77 0.09375
+python3 -W ignore train_nanostring.py --test_only 1 --id fov6 --img_name F006 --ncluster 4        # 0.61 res=0.1875
+python3 -W ignore train_nanostring.py --test_only 1 --id fov7 --img_name F007 --ncluster 8        # 0.55 0.75
+python3 -W ignore train_nanostring.py --test_only 1 --id fov8 --img_name F008 --ncluster 8        # 0.56 0.66796875
+python3 -W ignore train_nanostring.py --test_only 1 --id fov9 --img_name F009 --ncluster 4        # 0.60 0.09375
+python3 -W ignore train_nanostring.py --test_only 1 --id fov10 --img_name F010 --ncluster 6       # 0.57 0.421875
+python3 -W ignore train_nanostring.py --test_only 1 --id fov11 --img_name F011 --ncluster 6       # 0.51 0.57421875
+python3 -W ignore train_nanostring.py --test_only 1 --id fov12 --img_name F012 --ncluster 6       # 0.70 0.375
+python3 -W ignore train_nanostring.py --test_only 1 --id fov13 --img_name F013 --ncluster 6      # 0.58 0.328125
+python3 -W ignore train_nanostring.py --test_only 1 --id fov14 --img_name F014 --ncluster 4       # 0.71 0.1875
+python3 -W ignore train_nanostring.py --test_only 1 --id fov15 --img_name F015 --ncluster 6       # 0.42 0.46875
+python3 -W ignore train_nanostring.py --test_only 1 --id fov16 --img_name F016 --ncluster 6       # 0.41 0.4833984375
+python3 -W ignore train_nanostring.py --test_only 1 --id fov17 --img_name F017 --ncluster 4       # 0.52 0.2109375
+python3 -W ignore train_nanostring.py --test_only 1 --id fov18 --img_name F018 --ncluster 3       # 0.54 0.140625
+python3 -W ignore train_nanostring.py --test_only 1 --id fov19 --img_name F019 --ncluster 3        # 0.48 res=0.15
+python3 -W ignore train_nanostring.py --test_only 1 --id fov20 --img_name F020 --ncluster 4       # 0.73 res=0.09375
