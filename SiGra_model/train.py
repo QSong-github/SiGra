@@ -8,7 +8,7 @@ if __name__ == "__main__":
     parser.add_argument('--dataset', type=str, default='nanostring', help='should be nanostring, 10x or merscope')
 
 
-	parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--root', type=str, default='../dataset/nanostring')
     parser.add_argument('--epochs', type=int, default=2000)
     parser.add_argument('--id', type=str, default='fov1')
@@ -26,10 +26,10 @@ if __name__ == "__main__":
 
 
     if opt.dataset == 'nanostring':
-    	train_nano(opt)
+        train_nano(opt)
 
     elif opt.dataset == '10x':
-    	train_10x(opt)
+        train_10x(opt)
 
     elif opt.dataset == 'merscope':
-    	train_mscope(opt)
+        train_mscope(opt)

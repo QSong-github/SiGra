@@ -26,12 +26,12 @@ def norm(img):
     return (img - img.min()) / (img.max() - img.min())
 
 def resize(img, scale_precent=25):
-	# downsample the image to fit into the model
-	width = int(img.shape[1] * scale_precent / 100)
-	height = int(img.shape[0] * scale_precent / 100)
-	dim = (width, height)
-	resized = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
-	return resized
+    # downsample the image to fit into the model
+    width = int(img.shape[1] * scale_precent / 100)
+    height = int(img.shape[0] * scale_precent / 100)
+    dim = (width, height)
+    resized = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
+    return resized
 
 
 def read_processed_adatas(root, fov):

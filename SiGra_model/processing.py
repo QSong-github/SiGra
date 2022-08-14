@@ -8,10 +8,10 @@ parser.add_argument('--dataset', type=str, default='nanostring', help='should be
 opt = parser.parse_args()
 
 if opt.dataset == 'nanostring':
-	processing_nano()
+    processing_nano()
 elif opt.dataset == 'merscope':
-	processing_mscope()
+    processing_mscope()
 elif opt.dataset == '10x':
-	processing_10x()
+    processing_10x()
 
 
