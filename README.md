@@ -108,7 +108,7 @@ python3 processing.py --dataset 10x
 
 ## Reproduction instructions
 
-Download the datasets and [checkpoints](https://purdue0-my.sharepoint.com/:u:/g/personal/tang385_purdue_edu/EZnAbrQm59dPtGKtSgSUBDABGGW86kh3ur6zZ2e-hVFWXQ?e=MWlkwB) and put in folders as above.
+Download the datasets and [checkpoints](https://purdue0-my.sharepoint.com/:f:/g/personal/tang385_purdue_edu/Em6J9c_VogROtFRebPBSgmwBk8TH0jYu1OTWm9hhfNWJVA?e=Azhljx) and put in folders as above.
 
 1. for NanoString CosMx dataset
 The results will be stored in "/path/siGra/results/nanostring/"
