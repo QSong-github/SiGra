@@ -46,7 +46,7 @@ The dataset can be download [here](https://info.vizgen.com/mouse-liver-access)
 The dataset can be download [here](https://github.com/LieberInstitute/HumanPilot/)
 
 ### Data folder structure
-SiGra
+
 ```
 ├── requirement.txt
 ├── dataset
