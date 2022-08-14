@@ -28,11 +28,11 @@ torch_geometric==2.0.4
 ```
 ## Installation
 
-Download scGCN:
+Download SiGra:
 ```
-git clone https://github.com/QSong-github/scGCN
+git clone https://github.com/QSong-github/SiGra
 ```
-Install requirements and scGCN:
+Install requirements and SiGra:
 
 ```bash
 python setup.py install
