@@ -93,6 +93,19 @@ The dataset can be download [here](https://github.com/LieberInstitute/HumanPilot
 2. Run SiGra: [here](https://github.com/QSong-github/SiGra/blob/main/Tutorials/SiGra_train.ipynb)
 3. Output data visualization: [here](https://github.com/QSong-github/SiGra/blob/main/Tutorials/SiGra_visualize.ipynb)
 
+## processing scripts
+```
+# go to /path/to/Sigra
+# for NanoString CosMx dataset
+python3 processing.py --dataset nanostring
+
+# for Vizgen MERSCOPE dataset
+python3 processing.py --dataset merscope
+
+# for 10x Visium dataset
+python3 processing.py --dataset 10x
+```
+
 ## Reproduction instructions
 
 Download the datasets and [checkpoints](https://purdue0-my.sharepoint.com/:u:/g/personal/tang385_purdue_edu/EZnAbrQm59dPtGKtSgSUBDABGGW86kh3ur6zZ2e-hVFWXQ?e=MWlkwB) and put in folders as above.
