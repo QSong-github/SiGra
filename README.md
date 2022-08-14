@@ -109,6 +109,8 @@ python3 processing.py --dataset 10x
 ```
 
 ## Reproduction instructions
+go to /path/to/SiGra/SiGra_model
+
 ### inference tutorials
 
 Download the datasets and [checkpoints](https://purdue0-my.sharepoint.com/:f:/g/personal/tang385_purdue_edu/Em6J9c_VogROtFRebPBSgmwBk8TH0jYu1OTWm9hhfNWJVA?e=Azhljx) and put in folders as above.
