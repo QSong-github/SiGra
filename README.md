@@ -111,19 +111,19 @@ python3 processing.py --dataset 10x
 
 Download the datasets and [checkpoints](https://purdue0-my.sharepoint.com/:f:/g/personal/tang385_purdue_edu/Em6J9c_VogROtFRebPBSgmwBk8TH0jYu1OTWm9hhfNWJVA?e=Azhljx) and put in folders as above.
 
-####1. for NanoString CosMx dataset
+#### 1. for NanoString CosMx dataset
 The results will be stored in "/path/siGra/results/nanostring/"
 ```
 python3 train.py --test_only 1 --save_path ../checkpoint/nanostring_final/ --pretrain final.pth --dataset nanostring
 ```
 
-####2. for Vizgen MERSCOPE dataset
+#### 2. for Vizgen MERSCOPE dataset
 The reuslts will be stored in /path/siGra/reuslts/merscope/
 ```
 python3 train.py --test_only 1 --save_path ../checkpoint/merscope_final/ --pretrain final.pth --dataset merscope
 ```
 
-####3. for 10x Visium dataset
+#### 3. for 10x Visium dataset
 The results will be stored in "/path/siGra/results/10x_final/"
 ```
 python3 train.py --test_only 1 --save_path ../checkpoint/10x_final/ --id 151507 --ncluster 7 --dataset 10x
@@ -138,19 +138,19 @@ sh test_visium.sh
 
 ### Training tutorials
 
-####1. for NanoString CosMx dataset
+#### 1. for NanoString CosMx dataset
 The hyperparameters were manually selected in individual datasets
 ```
 python3 train.py --dataset nanostring --test_only 0 --save_path ../checkpoint/nanostring_train/ --seed 1234 --epochs 900 --lr 1e-3 
 ```
 
-####2. for Vizgen MERSCOPE dataset
+#### 2. for Vizgen MERSCOPE dataset
 ```
 python3 train.py --dataset merscope --test_only 0 --save_path ../checkpoint/merscope_train/ --seed 1234 --epochs 1000 --lr 1e-3 
 ```
 
 
-####3. for 10x Visium dataset
+#### 3. for 10x Visium dataset
 ```
 python3 train.py --dataset 10x --test_only 0 --save_path ../checkpoint/10x_train/ --seed 1234 --epochs 600 --lr 1e-3 --id 151507 --ncluster 7 --repeat 1
 ```
