@@ -15,7 +15,7 @@ from scipy.optimize import linear_sum_assignment
 import matplotlib.pyplot as plt
 
 os.environ['R_HOME'] = '/opt/R/4.0.2/lib/R'
-os.environ['R_USER'] = '/home/dao2/anaconda3/lib/python3.8/site-packages/rpy2'
+os.environ['R_USER'] = '~/anaconda3/lib/python3.8/site-packages/rpy2'
 os.environ['LD_LIBRARY_PATH'] = '/opt/R/4.0.2/lib/R/lib'
 os.environ['PYTHONHASHSEED'] = '1234'
 os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
@@ -159,28 +159,32 @@ def train(opt, r):
     adata = train_img(adata, hidden_dims=[512, 30],  n_epochs=opt.epochs, save_loss=True, 
                 lr=opt.lr, random_seed=opt.seed, save_path=sp, ncluster=opt.ncluster, repeat=r)
 
-    adata = mclust_R(adata, used_obsm='pred', num_cluster=opt.ncluster)
-    obs_df = adata.obs.dropna()
-    ARI = adjusted_rand_score(obs_df['mclust'], obs_df['Ground Truth'])
+    # we use mclust for 10x dataset
+    if opt.cluster_method == 'mclust':
+        adata = mclust_R(adata, used_obsm='pred', num_cluster=opt.ncluster)
+        obs_df = adata.obs.dropna()
+        ARI = adjusted_rand_score(obs_df['mclust'], obs_df['Ground Truth'])
 
-    print('ari is %.2f'%(ARI))
-    return ARI
+        print('ari is %.2f'%(ARI))
+        return ARI
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--root', type=str, default='../dataset/DLPFC')
-    parser.add_argument('--epochs', type=int, default=1000)
-    parser.add_argument('--id', type=str, default='151673')
-    parser.add_argument('--seed', type=int, default=1234)
-    parser.add_argument('--save_path', type=str, default='../checkpoint/transformer_final')
-    parser.add_argument('--ncluster', type=int, default=7)
-    parser.add_argument('--repeat', type=int, default=5)
-    parser.add_argument('--use_gray', type=float, default=0)
-    parser.add_argument('--test_only', type=int, default=0)
-    parser.add_argument('--pretrain', type=str, default='final.pth')
-    opt = parser.parse_args()
+# if __name__ == "__main__":
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument('--lr', type=float, default=1e-3)
+#     parser.add_argument('--root', type=str, default='../dataset/DLPFC')
+#     parser.add_argument('--epochs', type=int, default=1000)
+#     parser.add_argument('--id', type=str, default='151673')
+#     parser.add_argument('--seed', type=int, default=1234)
+#     parser.add_argument('--save_path', type=str, default='../checkpoint/transformer_final')
+#     parser.add_argument('--ncluster', type=int, default=7)
+#     parser.add_argument('--repeat', type=int, default=5)
+#     parser.add_argument('--use_gray', type=float, default=0)
+#     parser.add_argument('--test_only', type=int, default=0)
+#     parser.add_argument('--pretrain', type=str, default='final.pth')
+#     opt = parser.parse_args()
 
+def train_10x(opt):
+    opt.cluster_method = 'mclust'
     if opt.test_only:
         ari = infer(opt)
     else:

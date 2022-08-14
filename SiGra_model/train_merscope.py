@@ -17,7 +17,7 @@ from scipy.optimize import linear_sum_assignment
 from tqdm import tqdm
 
 os.environ['R_HOME'] = '/opt/R/4.0.2/lib/R'
-os.environ['R_USER'] = '/home/dao2/anaconda3/lib/python3.8/site-packages/rpy2'
+os.environ['R_USER'] = '~/anaconda3/lib/python3.8/site-packages/rpy2'
 os.environ['LD_LIBRARY_PATH'] = '/opt/R/4.0.2/lib/R/lib'
 os.environ['PYTHONHASHSEED'] = '1234'
 os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
@@ -140,20 +140,21 @@ def main(opt):
                 ncluster=opt.ncluster, repeat=0)
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--root', type=str, default='../dataset/mouseLiver')
-    parser.add_argument('--epochs', type=int, default=1000)
-    parser.add_argument('--seed', type=int, default=1234)
-    parser.add_argument('--save_path', type=str, default='../checkpoint/merscope_all')
-    parser.add_argument('--ncluster', type=int, default=14)
-    parser.add_argument('--repeat', type=int, default=1)
-    parser.add_argument('--test_only', type=int, default=0)
-    parser.add_argument('--pretrain', type=str, default='final.pth')
-    parser.add_argument('--processed', type=int, default=1)
-    opt = parser.parse_args()
+# if __name__ == '__main__':
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument('--lr', type=float, default=1e-3)
+#     parser.add_argument('--root', type=str, default='../dataset/mouseLiver')
+#     parser.add_argument('--epochs', type=int, default=1000)
+#     parser.add_argument('--seed', type=int, default=1234)
+#     parser.add_argument('--save_path', type=str, default='../checkpoint/merscope_all')
+#     parser.add_argument('--ncluster', type=int, default=14)
+#     parser.add_argument('--repeat', type=int, default=1)
+#     parser.add_argument('--test_only', type=int, default=0)
+#     parser.add_argument('--pretrain', type=str, default='final.pth')
+#     parser.add_argument('--processed', type=int, default=1)
+#     opt = parser.parse_args()
 
+def train_mscope(opt):
     if opt.test_only:
         infer(opt)
     else:

@@ -29,7 +29,8 @@ def precessing(dirs):
     sample_csv.to_csv(os.path.join(dirs, 'sample_data.csv'))
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
+def processing_10x():
     root = '../dataset/DLPFC'
     sub_id = ['151507', '151508', '151509', '151510', 
             '151669', '151670', '151671', '151672',

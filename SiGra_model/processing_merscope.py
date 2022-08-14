@@ -166,7 +166,8 @@ def draw_spatial():
     final = cv2.vconcat(combines)
     cv2.imwrite('../dataset/merscope/combine.png', final)
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
+def processing_mscope():
     # step 1: cut images into image patchs
     # this may takes about 3 hours 
     save_image(root='../dataset/merscope/Liver1Slice1_images_mosaic_DAPI_z3.tif', transform_root='../dataset/merscope/Liver1Slice1_images_micron_to_mosaic_pixel_transform.csv', btype='DAPI')

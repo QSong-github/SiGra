@@ -138,7 +138,8 @@ def gen_h5ad(id, img_id, fov):
 
 	adata.write(os.path.join(root, id, 'sampledata.h5ad'))
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
+def processing_nano():
 	ids = [
         'fov1', 'fov2', 'fov3', 'fov4', 'fov5',
         'fov6', 'fov7', 'fov8', 'fov9', 'fov10',
