@@ -1,4 +1,4 @@
-# SiGra: Image guided spatial transcriptomics clustering and denoising using graph transformer
+# SiGra: Single-cell spatial elucidation through image-augmented graph transformer
 
 ## Installation
 SiGra is built based on pytorch
