@@ -1,6 +1,5 @@
 # SiGra: Single-cell spatial elucidation through image-augmented graph transformer
 
-## Installation
 SiGra is built based on pytorch
 Test on: Ubuntu 18.04, 2080TI GPU, Intel i9-9820, 3.30GHZ, 20 core, 64 GB, CUDA environment(cuda 11.2)
 
