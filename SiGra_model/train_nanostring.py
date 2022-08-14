@@ -37,8 +37,8 @@ def gen_adatas(root, id, img_name):
     overlay = cv2.cvtColor(overlay, cv2.COLOR_BGR2GRAY)
     print(overlay.shape)
 
-    if opt.use_gray:
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # if opt.use_gray:
+    #     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     transform = transforms.ToTensor()
     img = transform(img)
     overlay = transform(overlay)
@@ -88,7 +88,7 @@ def infer(opt, r=0):
 
     adatas = list()
     for id, name in zip(ids, img_names):
-        adata = gen_adatas(opt.root, id, name)
+        adata = gen_adatas(opt, opt.root, id, name)
         adatas.append(adata)
     
     sp = opt.save_path
