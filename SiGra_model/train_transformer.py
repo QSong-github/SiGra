@@ -57,12 +57,12 @@ def test_img(adata, load_path, hidden_dims=[512, 30], key_added='pred', device =
     adata.layers['recon'] = np.zeros((adata.shape[0], adata.shape[1]))
     adata.layers['recon'][:, adata.var['highly_variable']] = output
 
-    # adata_Vars.obsm['imgs'] = adata_Vars.obsm['imgs'].to_numpy()
-    # adata_Vars.write('./151676_var.h5ad')
+    adata_Vars.obsm['imgs'] = adata_Vars.obsm['imgs'].to_numpy()
+    adata_Vars.write('./151676_var.h5ad')
 
-    # adata_recon = adata_Vars.copy()
-    # adata_recon.X = output
-    # adata_recon.write('./151676_recon.h5ad')
+    adata_recon = adata_Vars.copy()
+    adata_recon.X = output
+    adata_recon.write('./151676_recon.h5ad')
     return adata
 
 @torch.no_grad()
@@ -239,6 +239,126 @@ def train_nano_batch(opt, adata, hidden_dims=[512, 30], n_epochs=1000, lr=0.001,
             optimizer.step()
     torch.save(model.state_dict(), os.path.join(save_path, 'final_%d.pth'%(repeat)))
 
+
+
+@torch.no_grad()
+def test_nano_fov_batch(opt, adatas, model_name=None, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_added='STAGATE',
+                gradient_clipping=5.,  weight_decay=0.0001, verbose=True, 
+                random_seed=0, save_loss=False, save_reconstrction=False, 
+                device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu'),
+                save_path='../checkpoint/trans_gene/', ncluster=7, repeat=1):
+    seed = random_seed
+    import random
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    
+    datas, imgs = [], []
+    gt_frame = None
+    datas, gene_dims = [], []
+    gene_dim = 0
+    img_dim = 0 # gene and img dim is same for all fovs
+
+    for adata in adatas:
+        adata.X = sp.csr_matrix(adata.X)
+        data, img = Transfer_img_Data(adata)
+        # print(data.x.shape, img.x.shape)
+        gene_dim = data.x.shape[1]
+        img_dim = img.x.shape[1]
+        data.x = torch.cat([data.x, img.x], dim=1)
+        # data = data.to(device)
+        # img = img.to(device)
+        datas.append(data)
+        # imgs.append(img)
+        
+        # if gt_frame is None:
+        #     gt_frame = adata.obs['merge_cell_type']
+        # else:
+        #     gt_frame = pd.concat([gt_frame, adata.obs['merge_cell_type']])
+    import anndata
+    adata = anndata.concat(adatas)
+
+    loader = DataLoader(datas, batch_size=1, shuffle=False)
+    model = TransImg(hidden_dims=[gene_dim, img_dim] + hidden_dims).to(device)
+    # torch.save(model.state_dict(), os.path.join(save_path, 'init.pth'))
+    if model_name is not None:
+        model.load_state_dict(torch.load(os.path.join(save_path, model_name)))
+    else:
+        print(os.path.join(save_path, opt.pretrain))
+        model.load_state_dict(torch.load(os.path.join(save_path, opt.pretrain)))
+
+
+    seed = random_seed
+    import random
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    hidden_matrix = None
+    gene_matrix = None
+    img_matrix = None
+    couts = None
+    for idx, batch in enumerate(loader):
+        batch = batch.to(device)
+        # print(batch)
+        bgene = batch.x[:, :gene_dim]
+        bimg = batch.x[:, gene_dim:]
+        # exit(0)
+        edge_index = batch.edge_index
+        gz,iz,cz, gout,iout,cout = model(bgene, bimg, edge_index)
+
+        # cannot load into memory
+        # save each fov first
+        latent_path = os.path.join('merscope', 'preds')
+        if not os.path.exists(latent_path):
+            os.makedirs(latent_path)
+        nlists = ['gene_latent','image_latent', 'combine_latent', 'gene_recon', 'image_recon', 'combine_recon']
+        for n in nlists:
+            if not os.path.exists(os.path.join(latent_path, n)):
+                os.makedirs(os.path.join(latent_path, n))
+
+        df = pd.DataFrame(gz.detach().cpu().numpy(), index=adatas[idx].obs.index)
+        df.to_csv(os.path.join(latent_path, 'gene_latent', 'fov_%d.csv'%(idx)))
+
+        df = pd.DataFrame(iz.detach().cpu().numpy(), index=adatas[idx].obs.index)
+        df.to_csv(os.path.join(latent_path, 'image_latent', 'fov_%d.csv'%(idx)))
+
+        df = pd.DataFrame(cz.detach().cpu().numpy(), index=adatas[idx].obs.index)
+        df.to_csv(os.path.join(latent_path, 'combine_latent', 'fov_%d.csv'%(idx)))
+            
+        df = pd.DataFrame(gout.detach().cpu().numpy(), index=adatas[idx].obs.index)
+        df.to_csv(os.path.join(latent_path, 'gene_recon', 'fov_%d.csv'%(idx)))
+
+        df = pd.DataFrame(iout.detach().cpu().numpy(), index=adatas[idx].obs.index)
+        df.to_csv(os.path.join(latent_path, 'image_recon', 'fov_%d.csv'%(idx)))
+
+        df = pd.DataFrame(cout.detach().cpu().numpy(), index=adatas[idx].obs.index)
+        df.to_csv(os.path.join(latent_path, 'combine_recon', 'fov_%d.csv'%(idx)))
+
+        # print(cz.shape)
+        # if hidden_matrix is None:
+        #     hidden_matrix = cz.detach().cpu()
+        #     gene_matrix = gz.detach().cpu()
+        #     couts = cout.detach().cpu()
+        #     img_matrix = iz.detach().cpu()
+        # else:
+        #     hidden_matrix = torch.cat([hidden_matrix, cz.detach().cpu()], dim=0)
+        #     gene_matrix = torch.cat([gene_matrix, gz.detach().cpu()], dim=0)
+        #     img_matrix = torch.cat([img_matrix, iz.detach().cpu()], dim=0)
+        #     couts = torch.cat([couts, cout.detach().cpu()], dim=0)
+
+
+
 @torch.no_grad()
 def test_nano_fov(opt, adatas, model_name=None, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_added='STAGATE',
                 gradient_clipping=5.,  weight_decay=0.0001, verbose=True, 
@@ -268,7 +388,7 @@ def test_nano_fov(opt, adatas, model_name=None, hidden_dims=[512, 30], n_epochs=
     for adata in adatas:
         adata.X = sp.csr_matrix(adata.X)
         data, img = Transfer_img_Data(adata)
-        print(data.x.shape, img.x.shape)
+        # print(data.x.shape, img.x.shape)
         gene_dim = data.x.shape[1]
         img_dim = img.x.shape[1]
         data.x = torch.cat([data.x, img.x], dim=1)
@@ -316,6 +436,7 @@ def test_nano_fov(opt, adatas, model_name=None, hidden_dims=[512, 30], n_epochs=
         # exit(0)
         edge_index = batch.edge_index
         gz,iz,cz, gout,iout,cout = model(bgene, bimg, edge_index)
+        print(cz.shape)
         if hidden_matrix is None:
             hidden_matrix = cz.detach().cpu()
             gene_matrix = gz.detach().cpu()
@@ -584,7 +705,7 @@ def train_img(adata, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_added='
     if 'highly_variable' in adata.var.columns:
         adata_Vars =  adata[:, adata.var['highly_variable']]
     else:
-        adata_Vars = adata.copy()
+        adata_Vars = adata
     
     if verbose:
         print('Size of Input: ', adata_Vars.shape)
@@ -633,8 +754,8 @@ def train_img(adata, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_added='
         model.eval()
         gz,iz,cz, gout,iout,cout = model(data.x, img.x, data.edge_index)
 
-        if not os.path.exists(save_path):
-            os.makedirs(save_path)
+        if os.path.exists(save_path):
+            os.makedir(save_path)
         adata.obsm['pred'] = cz.clone().detach().cpu().numpy()
         sc.pp.neighbors(adata, use_rep='pred')
         sc.tl.umap(adata)
@@ -644,5 +765,8 @@ def train_img(adata, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_added='
         plt.savefig(os.path.join(save_path, 'umap_final.pdf'), bbox_inches='tight')
     
         adata.obsm['pred'] = cz.to('cpu').detach().numpy().astype(np.float32)
+        output = cout.to('cpu').detach().numpy().astype(np.float32)
+        output[output < 0] = 0
+        adata.layers['recon'] = output
     plt.close('all')
     return adata

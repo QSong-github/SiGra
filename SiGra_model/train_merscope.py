@@ -8,7 +8,7 @@ import numpy as np
 import cv2
 import torchvision.transforms as transforms
 from utils import Cal_Spatial_Net, Stats_Spatial_Net, _hungarian_match, seed_everything
-from train_transformer import train_nano_fov, test_nano_fov, test_nano_fov_batch
+from train_transformer import train_nano_fov, test_nano_fov_batch
 from sklearn.decomposition import PCA
 import torch
 import matplotlib.pyplot as plt
