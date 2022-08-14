@@ -1,9 +1,8 @@
 # SiGra: Image guided spatial transcriptomics clustering and denoising using graph transformer
 
 ## Installation
-SiGra is implemented in the pytorch framework   
-tested on: (Ubuntu 18.04, 2080TI GPU, Intel i9-9820, 3.30GHZ, 20 core, 64 GB)  
-Please run scGIT on CUDA environment(cuda 11.2)  
+SiGra is built based on pytorch
+Test on: Ubuntu 18.04, 2080TI GPU, Intel i9-9820, 3.30GHZ, 20 core, 64 GB, CUDA environment(cuda 11.2)
 
 ## Requirements
 Required modules can be installed via requirements.txt under the project root
