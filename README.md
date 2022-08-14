@@ -93,12 +93,9 @@ The dataset can be download [here](https://github.com/LieberInstitute/HumanPilot
 2. Run SiGra: [here](https://github.com/QSong-github/SiGra/blob/main/Tutorials/SiGra_train.ipynb)
 3. Output data visualization: [here](https://github.com/QSong-github/SiGra/blob/main/Tutorials/SiGra_visualize.ipynb)
 
-## Quick Start
-
-### Download our intermeidate results and checkpoints for inference
-download the [checkpoints](https://purdue0-my.sharepoint.com/:u:/g/personal/tang385_purdue_edu/EZnAbrQm59dPtGKtSgSUBDABGGW86kh3ur6zZ2e-hVFWXQ?e=MWlkwB) and put them into the above roots.
-
 ### Reproduction instructions
+
+### Download the datasets and [checkpoints](https://purdue0-my.sharepoint.com/:u:/g/personal/tang385_purdue_edu/EZnAbrQm59dPtGKtSgSUBDABGGW86kh3ur6zZ2e-hVFWXQ?e=MWlkwB) and put in folders as above.
 1. for NanoString CosMx dataset
 The results will be stored in "/path/siGra/results/nanostring/"
 ```
