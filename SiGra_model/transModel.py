@@ -4,6 +4,42 @@ import torch
 import math
 # torch.set_default_tensor_type(torch.DoubleTensor)
 
+class TranOne(torch.nn.Module):
+    def __init__(self, hidden_dims, use_component='gene'):
+        super().__init__()
+        self.use_component = use_component
+
+        [in_dim, img_dim, num_hidden, out_dim] = hidden_dims
+        # [in_dim, emb_dim, img_dim, num_hidden, out_dim] = hidden_dims
+
+        self.conv1 = TransformerConv(in_dim, num_hidden)
+        self.conv2 = TransformerConv(num_hidden, out_dim)
+        self.conv3 = TransformerConv(out_dim, num_hidden)
+        self.conv4 = TransformerConv(num_hidden, in_dim)
+
+        self.imgconv1 = TransformerConv(img_dim, num_hidden)
+        self.imgconv2 = TransformerConv(num_hidden, out_dim)
+        self.imgconv3 = TransformerConv(out_dim, num_hidden)
+        self.imgconv4 = TransformerConv(num_hidden, img_dim)
+
+        # layernorm 
+        self.norm1 = LayerNorm(num_hidden)
+        self.norm2 = LayerNorm(out_dim)
+        # relu
+        self.activate = F.elu
+
+    def forward(self, feat, edge):
+        if self.use_component == 'gene':
+            h1 = self.activate(self.conv1(feat, edge))
+            h2 = self.conv2(h1, edge)
+            h3 = self.activate(self.conv3(h2, edge))
+            h4 = self.conv4(h3, edge)
+        else:
+            h1 = self.activate(self.imgconv1(feat, edge))
+            h2 = self.imgconv2(feat, edge)
+            h3 = self.activate(self.imgconv3(feat, edge))
+            h4 = self.imgconv4(feat, edge)
+        return h2, h4
 
 class DataContrast(torch.nn.Module):
     def __init__(self, hidden_dims, ncluster, nspots):
@@ -121,7 +157,7 @@ class TransImg2(torch.nn.Module):
 
 
 class TransImg(torch.nn.Module):
-    def __init__(self, hidden_dims):
+    def __init__(self, hidden_dims, use_img_loss=False):
         super().__init__()
         [in_dim, img_dim, num_hidden, out_dim] = hidden_dims
         # [in_dim, emb_dim, img_dim, num_hidden, out_dim] = hidden_dims
@@ -134,7 +170,10 @@ class TransImg(torch.nn.Module):
         self.imgconv1 = TransformerConv(img_dim, num_hidden)
         self.imgconv2 = TransformerConv(num_hidden, out_dim)
         self.imgconv3 = TransformerConv(out_dim, num_hidden)
-        self.imgconv4 = TransformerConv(num_hidden, in_dim)
+        if use_img_loss:
+            self.imgconv4 = TransformerConv(num_hidden, img_dim)
+        else:
+            self.imgconv4 = TransformerConv(num_hidden, in_dim)
 
         self.neck = TransformerConv(out_dim * 2, out_dim)
         self.neck2 = TransformerConv(out_dim, out_dim)
@@ -164,4 +203,5 @@ class TransImg(torch.nn.Module):
         c3 = self.activate(self.c3(c2, edge_index))
         c4 = self.c4(c3, edge_index)
 
+        # print(h4.shape, img4.shape, c4.shape)
         return h2, img2, c2, h4, img4, c4

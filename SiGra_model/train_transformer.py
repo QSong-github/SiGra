@@ -24,8 +24,13 @@ import os
 os.environ['PYTHONHASHSEED'] = '1234'
 os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
 os.environ['LD_LIBRARY_PATH'] = '/usr/local/cuda-10.2/bin:$PATH'
-def test_img(adata, load_path, hidden_dims=[512, 30], key_added='pred', device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu'),
-                save_path='../checkpoint/trans_gene/', random_seed=0):
+
+def test_one_branch(adata, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_added='STAGATE',
+                gradient_clipping=5.,  weight_decay=0.0001, verbose=True, 
+                random_seed=0, save_loss=False, save_reconstrction=False, 
+                device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu'),
+                save_path='../checkpoint/trans_gene/', ncluster=7, repeat=1, use_img_loss=0, use_combine=1,
+                X_train_idx=None, X_test_idx=None, lambda_1 = 1, lambda_2 = 1, lambda_3 = 1, branch='gene'):
     seed = random_seed
     import random
     random.seed(seed)
@@ -43,7 +48,11 @@ def test_img(adata, load_path, hidden_dims=[512, 30], key_added='pred', device =
     else:
         adata_Vars = adata
     data, img = Transfer_img_Data(adata_Vars)
-    model = TransImg(hidden_dims=[data.x.shape[1], img.x.shape[1]] + hidden_dims).to(device)
+    if branch == 'img_img':
+        use_img_loss = 1
+    else:
+        use_img_loss = 0
+    model = TransImg(hidden_dims=[data.x.shape[1], img.x.shape[1]] + hidden_dims, use_img_loss=use_img_loss).to(device)
     print(load_path)
     # model.load_state_dict(torch.load(os.path.join(save_path, 'final_%d.pth'%(repeat))))
     model.load_state_dict(torch.load(load_path))
@@ -51,19 +60,123 @@ def test_img(adata, load_path, hidden_dims=[512, 30], key_added='pred', device =
     img = img.to(device)
     model.eval()
     gz,iz,cz, gout,iout,cout = model(data.x, img.x, data.edge_index)
-    adata.obsm['pred'] = cz.clone().detach().cpu().numpy()
-    output = cout.clone().detach().cpu().numpy()
+
+    if branch == 'gene':
+        predz = gz
+        predout = gout
+    elif branch == 'img_gene':
+        predz = iz
+        predout = iout
+    elif branch == 'img_img':
+        predz = iz
+        predout = iout
+    elif branch == 'combine_only':
+        predz = cz
+        predout = cout
+    else:
+        raise NotImplementedError()
+
+    adata.obsm['pred'] = predz.clone().detach().cpu().numpy()
+    output = predout.clone().detach().cpu().numpy()
     output[output < 0] = 0
-    adata.layers['recon'] = np.zeros((adata.shape[0], adata.shape[1]))
-    adata.layers['recon'][:, adata.var['highly_variable']] = output
+    # adata.layers['recon'] = np.zeros((adata.shape[0], adata.shape[1]))
+    # adata.layers['recon'][:, adata.var['highly_variable']] = output
 
     adata_Vars.obsm['imgs'] = adata_Vars.obsm['imgs'].to_numpy()
-    adata_Vars.write('./151676_var.h5ad')
+    # adata_Vars.write('./151676_var.h5ad')
 
     adata_recon = adata_Vars.copy()
     adata_recon.X = output
-    adata_recon.write('./151676_recon.h5ad')
-    return adata
+    # adata_recon.write('./151676_recon.h5ad')
+    return adata    
+
+
+# def test_img(adata, load_path, hidden_dims=[512, 30], key_added='pred', device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu'),
+#                 save_path='../checkpoint/trans_gene/', random_seed=0):
+def test_img(adata, load_path, hidden_dims=[512, 30], key_added='STAGATE',
+            verbose=True, random_seed=0, save_loss=False, save_reconstrction=False, 
+            device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu'),
+            save_path='../checkpoint/trans_gene/', ncluster=7, repeat=1, use_img_loss=0, use_combine=1,
+            X_train_idx=None, X_test_idx=None, lambda_1 = 1, lambda_2 = 1, lambda_3 = 1):
+    seed = random_seed
+    import random
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    # adata.X = sp.csr_matrix(adata.X)
+    if 'highly_variable' in adata.var.columns:
+        adata_Vars =  adata[:, adata.var['highly_variable']]
+    else:
+        adata_Vars = adata
+    data, img = Transfer_img_Data(adata_Vars)
+    data = data.to(device)
+    img = img.to(device)
+    # model = TransImg(hidden_dims=[data.x.shape[1], img.x.shape[1]] + hidden_dims).to(device)
+    # print(load_path)
+    # # model.load_state_dict(torch.load(os.path.join(save_path, 'final_%d.pth'%(repeat))))
+    # model.load_state_dict(torch.load(load_path))
+    # data = data.to(device)
+    # img = img.to(device)
+    # model.eval()
+    # gz,iz,cz, gout,iout,cout = model(data.x, img.x, data.edge_index)
+    # adata.obsm['pred'] = cz.clone().detach().cpu().numpy()
+    # output = cout.clone().detach().cpu().numpy()
+    # output[output < 0] = 0
+    # adata.layers['recon'] = np.zeros((adata.shape[0], adata.shape[1]))
+    # adata.layers['recon'][:, adata.var['highly_variable']] = output
+
+    # adata_Vars.obsm['imgs'] = adata_Vars.obsm['imgs'].to_numpy()
+    # adata_Vars.write('./151676_var.h5ad')
+
+    # adata_recon = adata_Vars.copy()
+    # adata_recon.X = output
+    # adata_recon.write('./151676_recon.h5ad')
+    # return adata
+
+    model = TransImg(hidden_dims=[data.x.shape[1], img.x.shape[1]] + hidden_dims, use_img_loss=use_img_loss).to(device)
+
+    with torch.no_grad():
+        model.load_state_dict(torch.load(load_path))
+        model.eval()
+        gz,iz,cz, gout,iout,cout = model(data.x, img.x, data.edge_index)
+
+        gloss = F.mse_loss(data.x, gout)
+        if use_img_loss:
+            iloss = F.mse_loss(img.x, iout)
+        else:
+            iloss = F.mse_loss(data.x, iout)
+        
+        if use_combine:
+            closs = F.mse_loss(data.x, cout)
+            loss = gloss * lambda_1 + iloss * lambda_2 + closs * lambda_3
+            loss = loss / (lambda_1 + lambda_2 + lambda_3)
+        else:
+            loss = gloss + iloss
+
+
+
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        adata_Vars.obsm['pred'] = cz.clone().detach().cpu().numpy()
+        sc.pp.neighbors(adata_Vars, use_rep='pred')
+        sc.tl.umap(adata_Vars)
+        plt.rcParams["figure.figsize"] = (3, 3)
+        sc.settings.figdir = save_path
+        ax = sc.pl.umap(adata_Vars, color=['Ground Truth'], show=False, title='combined latent variables')
+        plt.savefig(os.path.join(save_path, 'umap_final.pdf'), bbox_inches='tight')
+    
+        adata_Vars.obsm['pred'] = cz.to('cpu').detach().numpy().astype(np.float32)
+        output = cout.to('cpu').detach().numpy().astype(np.float32)
+        output[output < 0] = 0
+        adata_Vars.layers['recon'] = output
+    plt.close('all')
+    return adata_Vars, loss.item()
 
 @torch.no_grad()
 def test_nano(opt, adata, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_added='STAGATE',
@@ -238,7 +351,6 @@ def train_nano_batch(opt, adata, hidden_dims=[512, 30], n_epochs=1000, lr=0.001,
             torch.nn.utils.clip_grad_norm_(model.parameters(), gradient_clipping)
             optimizer.step()
     torch.save(model.state_dict(), os.path.join(save_path, 'final_%d.pth'%(repeat)))
-
 
 
 @torch.no_grad()
@@ -487,7 +599,8 @@ def train_nano_fov(opt, adatas, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, 
                 gradient_clipping=5.,  weight_decay=0.0001, verbose=True, 
                 random_seed=0, save_loss=False, save_reconstrction=False, 
                 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu'),
-                save_path='../checkpoint/trans_gene/', ncluster=7, repeat=1):
+                save_path='../checkpoint/trans_gene/', ncluster=7, repeat=1,
+                gene_weight=0.1, img_weight=0.1, combine_weight=1.0):
     # seed_everything(random_seed)
     seed = random_seed
     import random
@@ -547,7 +660,7 @@ def train_nano_fov(opt, adatas, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, 
             gloss = F.mse_loss(bgene, gout)
             iloss = F.mse_loss(bgene, iout)
             closs = F.mse_loss(bgene, cout)
-            loss = gloss + iloss + closs
+            loss = gene_weight * gloss + img_weight * iloss + combine_weight * closs
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), gradient_clipping)
             optimizer.step()
@@ -683,11 +796,138 @@ def train_nano(opt, adata, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_a
     torch.save(model.state_dict(), os.path.join(save_path, 'final_%d.pth'%(repeat)))
     return adata
 
+def train_one_branch(adata, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_added='STAGATE',
+                gradient_clipping=5.,  weight_decay=0.0001, verbose=True, 
+                random_seed=0, save_loss=False, save_reconstrction=False, 
+                device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu'),
+                save_path='../checkpoint/trans_gene/', ncluster=7, repeat=1, use_img_loss=0, use_combine=1,
+                X_train_idx=None, X_test_idx=None, lambda_1 = 1, lambda_2 = 1, lambda_3 = 1, branch='gene'):
+    seed = random_seed
+    import random
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    adata.X = sp.csr_matrix(adata.X)
+    # adata.X = adata.X.A
+    if 'highly_variable' in adata.var.columns:
+        adata_Vars =  adata[:, adata.var['highly_variable']]
+    else:
+        adata_Vars = adata
+    
+    if verbose:
+        print('Size of Input: ', adata_Vars.shape)
+    if 'Spatial_Net' not in adata.uns.keys():
+        raise ValueError("Spatial_Net is not existed! Run Cal_Spatial_Net first!")
+
+    data, img = Transfer_img_Data(adata_Vars)
+    if branch == 'img_img':
+        use_img_loss = 1
+    model = TransImg(hidden_dims=[data.x.shape[1], img.x.shape[1]] + hidden_dims, use_img_loss=use_img_loss).to(device)
+
+
+    torch.save(model.state_dict(), os.path.join(save_path, 'init.pth'))
+    data = data.to(device)
+    img = img.to(device)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    seed = random_seed
+    import random
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    for epoch in tqdm(range(1, n_epochs+1)):
+        
+        model.train()
+        optimizer.zero_grad()
+
+        gz,iz,cz, gout,iout,cout = model(data.x, img.x, data.edge_index)
+
+        if branch == 'gene':
+            loss = F.mse_loss(data.x, gout)
+
+        elif branch == 'img_gene':
+            loss = F.mse_loss(data.x, iout)
+
+        elif branch == 'img_img':
+            loss = F.mse_loss(img.x, iout)
+        
+        elif branch == 'combine_only':
+            loss = F.mse_loss(data.x, cout)
+        else:
+            raise NotImplementedError()
+        
+        # if use_img_loss:
+        #     print('use img to build reconstrauction loss')
+        #     iloss = F.mse_loss(img.x, iout)
+        # else:
+        #     iloss = F.mse_loss(data.x, iout)
+        
+        # if use_combine:
+        #     closs = F.mse_loss(data.x, cout)
+        #     loss = gloss * lambda_1 + iloss * lambda_2 + closs * lambda_3
+        # else:
+        #     loss = gloss * lambda_1 + iloss * lambda_2
+
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), gradient_clipping)
+        optimizer.step()
+    torch.save(model.state_dict(), os.path.join(save_path, 'final_%d_%s.pth'%(repeat, branch)))
+
+    with torch.no_grad():
+        model.load_state_dict(torch.load(os.path.join(save_path, 'final_%d_%s.pth'%(repeat, branch))))
+
+        model.eval()
+        gz,iz,cz, gout,iout,cout = model(data.x, img.x, data.edge_index)
+
+        if branch == 'gene':
+            loss = F.mse_loss(data.x, gout)
+            predz = gz
+            predout = gout
+
+        elif branch == 'img_gene':
+            loss = F.mse_loss(data.x, iout)
+            predz = iz
+            predout = iout
+
+        elif branch == 'img_img':
+            loss = F.mse_loss(img.x, iout)
+            predz = iz
+            predout = iout
+        
+        elif branch == 'combine_only':
+            loss = F.mse_loss(data.x, cout)
+            predz = cz
+            predout = cout
+
+
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+    
+        adata_Vars.obsm['pred'] = predz.to('cpu').detach().numpy().astype(np.float32)
+        # output = predout.to('cpu').detach().numpy().astype(np.float32)
+        # output[output < 0] = 0
+        # adata_Vars.layers['recon'] = output
+    plt.close('all')
+    return adata_Vars
+
 def train_img(adata, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_added='STAGATE',
                 gradient_clipping=5.,  weight_decay=0.0001, verbose=True, 
                 random_seed=0, save_loss=False, save_reconstrction=False, 
                 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu'),
-                save_path='../checkpoint/trans_gene/', ncluster=7, repeat=1):
+                save_path='../checkpoint/trans_gene/', ncluster=7, repeat=1, use_img_loss=0, use_combine=1,
+                X_train_idx=None, X_test_idx=None, lambda_1 = 1, lambda_2 = 1, lambda_3 = 1):
     # seed_everything(random_seed)
     seed = random_seed
     import random
@@ -713,7 +953,7 @@ def train_img(adata, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_added='
         raise ValueError("Spatial_Net is not existed! Run Cal_Spatial_Net first!")
 
     data, img = Transfer_img_Data(adata_Vars)
-    model = TransImg(hidden_dims=[data.x.shape[1], img.x.shape[1]] + hidden_dims).to(device)
+    model = TransImg(hidden_dims=[data.x.shape[1], img.x.shape[1]] + hidden_dims, use_img_loss=use_img_loss).to(device)
 
 
     torch.save(model.state_dict(), os.path.join(save_path, 'init.pth'))
@@ -740,9 +980,18 @@ def train_img(adata, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_added='
         gz,iz,cz, gout,iout,cout = model(data.x, img.x, data.edge_index)
 
         gloss = F.mse_loss(data.x, gout)
-        iloss = F.mse_loss(data.x, iout)
-        closs = F.mse_loss(data.x, cout)
-        loss = gloss + iloss + closs
+        if use_img_loss:
+            print('use img to build reconstrauction loss')
+            iloss = F.mse_loss(img.x, iout)
+        else:
+            iloss = F.mse_loss(data.x, iout)
+        
+        if use_combine:
+            closs = F.mse_loss(data.x, cout)
+            loss = gloss * lambda_1 + iloss * lambda_2 + closs * lambda_3
+        else:
+            loss = gloss * lambda_1 + iloss * lambda_2
+
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), gradient_clipping)
         optimizer.step()
@@ -754,19 +1003,272 @@ def train_img(adata, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_added='
         model.eval()
         gz,iz,cz, gout,iout,cout = model(data.x, img.x, data.edge_index)
 
-        if os.path.exists(save_path):
-            os.makedir(save_path)
-        adata.obsm['pred'] = cz.clone().detach().cpu().numpy()
-        sc.pp.neighbors(adata, use_rep='pred')
-        sc.tl.umap(adata)
+        gloss = F.mse_loss(data.x[data.val_mask], gout[data.val_mask])
+        if use_img_loss:
+            iloss = F.mse_loss(img.x[data.val_mask], iout[data.val_mask])
+        else:
+            iloss = F.mse_loss(data.x[data.val_mask], iout[data.val_mask])
+        
+        if use_combine:
+            closs = F.mse_loss(data.x[data.val_mask], cout[data.val_mask])
+            loss = gloss * lambda_1 + iloss * lambda_2 + closs * lambda_3
+            loss = loss / (lambda_1 + lambda_2 + lambda_3)
+        else:
+            loss = gloss + iloss
+
+
+
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        adata_Vars.obsm['pred'] = cz.clone().detach().cpu().numpy()
+        sc.pp.neighbors(adata_Vars, use_rep='pred')
+        sc.tl.umap(adata_Vars)
         plt.rcParams["figure.figsize"] = (3, 3)
         sc.settings.figdir = save_path
-        ax = sc.pl.umap(adata, color=['Ground Truth'], show=False, title='combined latent variables')
+        ax = sc.pl.umap(adata_Vars, color=['Ground Truth'], show=False, title='combined latent variables')
         plt.savefig(os.path.join(save_path, 'umap_final.pdf'), bbox_inches='tight')
     
-        adata.obsm['pred'] = cz.to('cpu').detach().numpy().astype(np.float32)
+        adata_Vars.obsm['pred'] = cz.to('cpu').detach().numpy().astype(np.float32)
         output = cout.to('cpu').detach().numpy().astype(np.float32)
         output[output < 0] = 0
-        adata.layers['recon'] = output
+        adata_Vars.layers['recon'] = output
     plt.close('all')
-    return adata
+    return adata_Vars, loss.item()
+
+
+def train_10x_all(adatas, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_added='STAGATE',
+                gradient_clipping=5.,  weight_decay=0.0001, verbose=True, 
+                random_seed=0, save_loss=False, save_reconstrction=False, 
+                device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu'),
+                save_path='../checkpoint/trans_gene/', ncluster=7, repeat=1, use_img_loss=0, use_combine=1,
+                lambda_1 = 1, lambda_2 = 1, lambda_3 = 1):
+    # seed_everything(random_seed)
+    seed = random_seed
+    import random
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    adata_vars_list = []
+    for adata in adatas:
+        adata.X = sp.csr_matrix(adata.X)
+        # adata.X = adata.X.A
+        if 'highly_variable' in adata.var.columns:
+            adata_Vars =  adata[:, adata.var['highly_variable']]
+        else:
+            adata_Vars = adata
+        adata_vars_list.append(adata_Vars)
+
+    if verbose:
+        print('Size of Input: ', adata_Vars.shape)
+    if 'Spatial_Net' not in adata.uns.keys():
+        raise ValueError("Spatial_Net is not existed! Run Cal_Spatial_Net first!")
+
+    datas = []
+    imgs = []
+    img_dim = 0
+    gene_dim = 0
+    for adata in adatas:
+        data, img = Transfer_img_Data(adata_Vars)
+        gene_dim = data.x.shape[1]
+        img_dim = img.x.shape[1]
+        data.x = torch.cat([data.x, img.x], dim=1)
+        datas.append(data)
+        # imgs.append(img)
+
+    loader = DataLoader(datas, batch_size=1, shuffle=False)
+
+    model = TransImg(hidden_dims=[gene_dim, img_dim] + hidden_dims, use_img_loss=use_img_loss).to(device)
+
+    torch.save(model.state_dict(), os.path.join(save_path, 'init.pth'))
+    data = data.to(device)
+    img = img.to(device)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    seed = random_seed
+    import random
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    
+    for epoch in tqdm(range(1, n_epochs+1)):
+        model.train()
+        for idx, batch in enumerate(loader):
+            batch = batch.to(device)
+            data = batch.x[:, :gene_dim]
+            img = batch.x[:, gene_dim:]
+            optimizer.zero_grad()
+            gz,iz,cz, gout,iout,cout = model(data, img, batch.edge_index)
+            gloss = F.mse_loss(data, gout)
+            if use_img_loss:
+                iloss = F.mse_loss(img, iout)
+            else:
+                iloss = F.mse_loss(data, iout)
+        
+            if use_combine:
+                closs = F.mse_loss(data, cout)
+                loss = gloss + iloss + closs
+            else:
+                loss = gloss + iloss
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), gradient_clipping)
+            optimizer.step()
+
+    torch.save(model.state_dict(), os.path.join(save_path, 'final_%d.pth'%(repeat)))
+
+    with torch.no_grad():
+        model.load_state_dict(torch.load(os.path.join(save_path, 'final_%d.pth'%(repeat))))
+
+        model.eval()
+        for idx, batch in enumerate(loader):
+            print(idx)
+            batch = batch.to(device)
+            data = batch.x[:, :gene_dim]
+            img = batch.x[:, gene_dim:]
+            gz,iz,cz, gout,iout,cout = model(data, img, batch.edge_index)
+            # print(cz.shape)
+            cell_shape = adata_vars_list[idx].shape[0]
+            if cz.shape[0] != cell_shape:
+                cz = cz[:cell_shape, ...]
+                cout = cout[:cell_shape, ...]
+                
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            adata_vars_list[idx].obsm['pred'] = cz.clone().detach().cpu().numpy()
+
+    
+            adata_vars_list[idx].obsm['pred'] = cz.to('cpu').detach().numpy().astype(np.float32)
+            output = cout.to('cpu').detach().numpy().astype(np.float32)
+            output[output < 0] = 0
+            adata_vars_list[idx].layers['recon'] = output
+
+    return adata_vars_list
+
+
+def test_10x_all(adatas, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_added='STAGATE',
+                gradient_clipping=5.,  weight_decay=0.0001, verbose=True, 
+                random_seed=0, save_loss=False, save_reconstrction=False, 
+                device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu'),
+                save_path='../checkpoint/trans_gene/', ncluster=7, repeat=1, use_img_loss=0, use_combine=1,
+                lambda_1 = 1, lambda_2 = 1, lambda_3 = 1):
+    # seed_everything(random_seed)
+    seed = random_seed
+    import random
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    adata_vars_list = []
+    for adata in adatas:
+        adata.X = sp.csr_matrix(adata.X)
+        # adata.X = adata.X.A
+        if 'highly_variable' in adata.var.columns:
+            adata_Vars =  adata[:, adata.var['highly_variable']]
+        else:
+            adata_Vars = adata
+        adata_vars_list.append(adata_Vars)
+
+    if verbose:
+        print('Size of Input: ', adata_Vars.shape)
+    if 'Spatial_Net' not in adata.uns.keys():
+        raise ValueError("Spatial_Net is not existed! Run Cal_Spatial_Net first!")
+
+    datas = []
+    imgs = []
+    img_dim = 0
+    gene_dim = 0
+    for adata in adatas:
+        data, img = Transfer_img_Data(adata_Vars)
+        gene_dim = data.x.shape[1]
+        img_dim = img.x.shape[1]
+        data.x = torch.cat([data.x, img.x], dim=1)
+        datas.append(data)
+        # imgs.append(img)
+
+    loader = DataLoader(datas, batch_size=1, shuffle=False)
+
+    model = TransImg(hidden_dims=[gene_dim, img_dim] + hidden_dims, use_img_loss=use_img_loss).to(device)
+
+    # torch.save(model.state_dict(), os.path.join(save_path, 'init.pth'))
+    # data = data.to(device)
+    # img = img.to(device)
+
+    # optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    # seed = random_seed
+    # import random
+    # random.seed(seed)
+    # os.environ['PYTHONHASHSEED'] = str(seed)
+    # np.random.seed(seed)
+    # torch.manual_seed(seed)
+    # torch.cuda.manual_seed(seed)
+    # os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+    # torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
+    
+    # for epoch in tqdm(range(1, n_epochs+1)):
+    #     model.train()
+    #     for idx, batch in enumerate(loader):
+    #         batch = batch.to(device)
+    #         data = batch.x[:, :gene_dim]
+    #         img = batch.x[:, gene_dim:]
+    #         optimizer.zero_grad()
+    #         gz,iz,cz, gout,iout,cout = model(data, img, batch.edge_index)
+    #         gloss = F.mse_loss(data, gout)
+    #         if use_img_loss:
+    #             iloss = F.mse_loss(img, iout)
+    #         else:
+    #             iloss = F.mse_loss(data, iout)
+        
+    #         if use_combine:
+    #             closs = F.mse_loss(data, cout)
+    #             loss = gloss + iloss + closs
+    #         else:
+    #             loss = gloss + iloss
+    #         loss.backward()
+    #         torch.nn.utils.clip_grad_norm_(model.parameters(), gradient_clipping)
+    #         optimizer.step()
+
+    # torch.save(model.state_dict(), os.path.join(save_path, 'final_%d.pth'%(repeat)))
+
+    with torch.no_grad():
+        model.load_state_dict(torch.load(os.path.join(save_path, 'final_%d.pth'%(repeat))))
+
+        model.eval()
+        for idx, batch in enumerate(loader):
+            print(idx)
+            batch = batch.to(device)
+            data = batch.x[:, :gene_dim]
+            img = batch.x[:, gene_dim:]
+            gz,iz,cz, gout,iout,cout = model(data, img, batch.edge_index)
+            # print(cz.shape)
+            cell_shape = adata_vars_list[idx].shape[0]
+            if cz.shape[0] != cell_shape:
+                cz = cz[:cell_shape, ...]
+                cout = cout[:cell_shape, ...]
+                
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            adata_vars_list[idx].obsm['pred'] = cz.clone().detach().cpu().numpy()
+
+    
+            adata_vars_list[idx].obsm['pred'] = cz.to('cpu').detach().numpy().astype(np.float32)
+            output = cout.to('cpu').detach().numpy().astype(np.float32)
+            output[output < 0] = 0
+            adata_vars_list[idx].layers['recon'] = output
+
+    return adata_vars_list

@@ -1,4 +1,4 @@
-import argpase
+import argparse
 from processing_merscope import processing_mscope
 from processing_nanostring import processing_nano
 from processing_visium import processing_10x

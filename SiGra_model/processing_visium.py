@@ -32,9 +32,12 @@ def precessing(dirs):
 # if __name__ == '__main__':
 def processing_10x():
     root = '../dataset/DLPFC'
-    sub_id = ['151507', '151508', '151509', '151510', 
-            '151669', '151670', '151671', '151672',
-            '151673', '151674', '151675', '151676']
+    # sub_id = ['151507', '151508', '151509', '151510', 
+    #         '151669', '151670', '151671', '151672',
+    #         '151673', '151674', '151675', '151676']
+
+    sub_id = ['151507']
+
     for id in tqdm.tqdm(sub_id):
         dirs = os.path.join(root, id)
         if not os.path.exists(dirs):

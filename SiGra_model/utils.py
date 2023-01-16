@@ -148,18 +148,33 @@ def Transfer_img_Data(adata):
     edgeList = np.array((e0, e1))
 
     if type(adata.X) == np.ndarray:
-        data = Data(edge_index=torch.LongTensor(np.array(
-            [edgeList[0], edgeList[1]])), x=torch.FloatTensor(adata.X))  # .todense()
-        img = Data(edge_index=torch.LongTensor(np.array(
-            [edgeList[0], edgeList[1]])), x=torch.FloatTensor(adata.obsm['imgs']))
+        if 'X_train' in adata.obs.keys():
+            X_train_idx = (adata.obs['X_train'].to_numpy() == 1)
+            X_test_idx = (adata.obs['X_train'].to_numpy() == 0)
+            print(X_train_idx) 
+            data = Data(edge_index=torch.LongTensor(np.array(
+                [edgeList[0], edgeList[1]])), x=torch.FloatTensor(adata.X), train_mask=list(X_train_idx), val_mask=list(X_test_idx))
+            img = Data(edge_index=torch.LongTensor(np.array(
+                [edgeList[0], edgeList[1]])), x=torch.FloatTensor(adata.obsm['imgs']), train_mask=list(X_train_idx), val_mask=list(X_test_idx))
+        else:
+            data = Data(edge_index=torch.LongTensor(np.array(
+                [edgeList[0], edgeList[1]])), x=torch.FloatTensor(adata.X))  # .todense()
+            img = Data(edge_index=torch.LongTensor(np.array(
+                [edgeList[0], edgeList[1]])), x=torch.FloatTensor(adata.obsm['imgs']))
     else:
-        data = Data(edge_index=torch.LongTensor(np.array(
-            [edgeList[0], edgeList[1]])), x=torch.FloatTensor(adata.X.todense()))  # .todense()
-        # test, using I as adj
-        img = Data(edge_index=torch.LongTensor(np.array(
-            [edgeList[0], edgeList[1]])), x=torch.FloatTensor(adata.obsm['imgs'].to_numpy()))
+        if 'X_train' in adata.obs.keys():
+            X_train_idx = (adata.obs['X_train'].to_numpy() == 1)
+            X_test_idx = (adata.obs['X_train'].to_numpy() == 0)
+            data = Data(edge_index=torch.LongTensor(np.array(
+                [edgeList[0], edgeList[1]])), x=torch.FloatTensor(adata.X.todense()), train_mask=list(X_train_idx), val_mask=list(X_test_idx))
+            img = Data(edge_index=torch.LongTensor(np.array(
+                [edgeList[0], edgeList[1]])), x=torch.FloatTensor(adata.obsm['imgs'].to_numpy()), train_mask=list(X_train_idx), val_mask=list(X_test_idx))
+        else:
+            data = Data(edge_index=torch.LongTensor(np.array(
+                [edgeList[0], edgeList[1]])), x=torch.FloatTensor(adata.X.todense()))  # .todense()
+            img = Data(edge_index=torch.LongTensor(np.array(
+                [edgeList[0], edgeList[1]])), x=torch.FloatTensor(adata.obsm['imgs'].to_numpy()))
     return data, img
-
 
 def Batch_Data(adata, num_batch_x, num_batch_y, spatial_key=['X', 'Y'], plot_Stats=False):
     Sp_df = adata.obs.loc[:, spatial_key].copy()
@@ -235,6 +250,7 @@ def Stats_Spatial_Net(adata):
     plt.xlabel('')
     plt.title('Number of Neighbors (Mean=%.2f)'%Mean_edge)
     ax.bar(plot_df.index, plot_df)
+    plt.close('all')
 
 def mclust_R(adata, num_cluster, modelNames='EEE', used_obsm='pred', random_seed=0):
     """\
