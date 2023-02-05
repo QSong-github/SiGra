@@ -1,0 +1,5 @@
+# /usr/bin/bash
+python3 train_nano_single_ablation.py --test_only 1 --h_dim1 512 --h_dim2 30 --num_fov 20 --save_path ../checkpoint/nano_ablation/combine_only/ --root ../dataset/nanostring --id lung9-1 --root ../dataset/nanostring --c_weight 1 --g_weight 0 --i_weight 0 --use_img_loss 0
+python3 train_nano_single_ablation.py --test_only 0 --h_dim1 512 --h_dim2 30 --num_fov 20 --save_path ../checkpoint/nano_ablation/img_img/ --root ../dataset/nanostring --id lung9-1 --root ../dataset/nanostring --c_weight 0 --g_weight 0 --i_weight 1 --use_img_loss 1
+python3 train_nano_single_ablation.py --test_only 0 --h_dim1 512 --h_dim2 30 --num_fov 20 --save_path ../checkpoint/nano_ablation/img_only/ --root ../dataset/nanostring --id lung9-1 --root ../dataset/nanostring --c_weight 0 --g_weight 1 --i_weight 1 --use_img_loss 0
+python3 train_nano_single_ablation.py --test_only 0 --h_dim1 512 --h_dim2 30 --num_fov 20 --save_path ../checkpoint/nano_ablation/gene_only/ --root ../dataset/nanostring --id lung9-1 --root ../dataset/nanostring --c_weight 0 --g_weight 1 --i_weight 0 --use_img_loss 0
