@@ -4,7 +4,7 @@ from tqdm import tqdm
 import scipy.sparse as sp
 from torch_geometric.loader import NeighborLoader, NeighborSampler, DataLoader
 
-from transModel import TransImg
+from transModel import TransImg, TransImg2
 from sklearn.metrics.cluster import adjusted_rand_score
 # from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
 # from torch_geometric.loader import NeighborLoader
@@ -469,10 +469,142 @@ def test_nano_fov_batch(opt, adatas, model_name=None, hidden_dims=[512, 30], n_e
         #     img_matrix = torch.cat([img_matrix, iz.detach().cpu()], dim=0)
         #     couts = torch.cat([couts, cout.detach().cpu()], dim=0)
 
+@torch.no_grad()
+def test_nano_fov_ablation(opt, adatas, model_name=None, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_added='STAGATE',
+                gradient_clipping=5.,  weight_decay=0.0001, verbose=True, 
+                random_seed=0, save_loss=False, save_reconstrction=False, 
+                device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu'),
+                save_path='../checkpoint/trans_gene/', ncluster=7, repeat=1,
+                gene_only=True, img_only=False, combine_only=False, use_img_loss=False):
+    seed = random_seed
+    import random
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    
+    datas, imgs = [], []
+    gt_frame = None
+    datas, gene_dims = [], []
+    gene_dim = 0
+    img_dim = 0 # gene and img dim is same for all fovs
 
+    # [fov1(feat, graph), fov2(feat, graph), fov3, ... fov20]
+    # 
+
+    for adata in adatas:
+        adata.X = sp.csr_matrix(adata.X)
+        data, img = Transfer_img_Data(adata)
+        gene_dim = data.x.shape[1]
+        img_dim = img.x.shape[1]
+        data.x = torch.cat([data.x, img.x], dim=1)
+
+        datas.append(data)
+
+    import anndata
+    adata = anndata.concat(adatas)
+
+    loader = DataLoader(datas, batch_size=1, shuffle=False)
+    if use_img_loss:
+        model = TransImg2(hidden_dims=[gene_dim, img_dim] + hidden_dims).to(device)
+    else:
+        model = TransImg(hidden_dims=[gene_dim, img_dim] + hidden_dims, use_img_loss=use_img_loss).to(device)
+    if model_name is not None:
+        model.load_state_dict(torch.load(os.path.join(save_path, model_name)))
+    else:
+        print(os.path.join(save_path, opt.pretrain))
+        model.load_state_dict(torch.load(os.path.join(save_path, opt.pretrain)))
+
+    seed = random_seed
+    import random
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    hidden_matrix = None
+    gene_matrix = None
+    img_matrix = None
+    couts = None
+    gouts = None
+    iouts = None
+    losses = 0
+    for batch in loader:
+        batch = batch.to(device)
+        # print(batch)
+        bgene = batch.x[:, :gene_dim]
+        bimg = batch.x[:, gene_dim:]
+        # exit(0)
+        edge_index = batch.edge_index
+        if use_img_loss:
+            iz, iout = model(bgene, bimg, edge_index)
+            cz = iz
+            gz = iz
+            cout = iout
+            gout = iout
+        else:
+            gz,iz,cz, gout,iout,cout = model(bgene, bimg, edge_index)
+
+        # gloss = F.mse_loss(bgene, gout)
+        # iloss = F.mse_loss(bgene, iout)
+        # closs = F.mse_loss(bgene, cout)
+        # loss = (gloss + iloss + closs) / 3
+        if gene_only:
+            loss = F.mse_loss(bgene, gout)
+        elif img_only and not use_img_loss:
+            loss = F.mse_loss(bgene, iout)
+        elif img_only and use_img_loss:
+            loss = F.mse_loss(bimg, iout)
+        else:
+            loss = F.mse_loss(bgene, cout)
+        losses += loss.item()
+
+        print(cz.shape)
+        if hidden_matrix is None:
+            hidden_matrix = cz.detach().cpu()
+            gene_matrix = gz.detach().cpu()
+            couts = cout.detach().cpu()
+            img_matrix = iz.detach().cpu()
+            iouts = iout.detach().cpu()
+            gouts = gout.detach().cpu()
+        else:
+            hidden_matrix = torch.cat([hidden_matrix, cz.detach().cpu()], dim=0)
+            gene_matrix = torch.cat([gene_matrix, gz.detach().cpu()], dim=0)
+            img_matrix = torch.cat([img_matrix, iz.detach().cpu()], dim=0)
+            couts = torch.cat([couts, cout.detach().cpu()], dim=0)
+            iouts = torch.cat([iouts, iout.detach().cpu()], dim=0)
+            gouts = torch.cat([gouts, gout.detach().cpu()], dim=0)
+
+    # exit(0)
+    hidden_matrix = hidden_matrix.numpy()
+    gene_matrix = gene_matrix.numpy()
+    img_matrix = img_matrix.numpy()
+    adata.obsm['pred'] = hidden_matrix
+    adata.obsm['gene_pred'] = gene_matrix
+    adata.obsm['img_pred'] = img_matrix
+    couts = couts.numpy().astype(np.float32)
+    couts[couts < 0] = 0
+    adata.layers['recon'] = couts
+
+    gouts = gouts.numpy().astype(np.float32)
+    gouts[gouts < 0] = 0
+    adata.layers['gene_recon'] = gouts
+
+    iouts = iouts.numpy().astype(np.float32)
+    iouts[iouts < 0] = 0
+    adata.layers['img_recon'] = iouts
+    return adata, losses
 
 @torch.no_grad()
-def test_nano_fov(opt, adatas, model_name=None, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_added='STAGATE',
+def test_nano_fov(opt, adatas, model_name=None, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_added='sigra',
                 gradient_clipping=5.,  weight_decay=0.0001, verbose=True, 
                 random_seed=0, save_loss=False, save_reconstrction=False, 
                 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu'),
@@ -540,6 +672,7 @@ def test_nano_fov(opt, adatas, model_name=None, hidden_dims=[512, 30], n_epochs=
     gene_matrix = None
     img_matrix = None
     couts = None
+    losses = 0
     for batch in loader:
         batch = batch.to(device)
         # print(batch)
@@ -548,6 +681,12 @@ def test_nano_fov(opt, adatas, model_name=None, hidden_dims=[512, 30], n_epochs=
         # exit(0)
         edge_index = batch.edge_index
         gz,iz,cz, gout,iout,cout = model(bgene, bimg, edge_index)
+        gloss = F.mse_loss(bgene, gout)
+        iloss = F.mse_loss(bgene, iout)
+        closs = F.mse_loss(bgene, cout)
+        loss = (gloss + iloss + closs)
+        losses += loss.item()
+
         print(cz.shape)
         if hidden_matrix is None:
             hidden_matrix = cz.detach().cpu()
@@ -569,31 +708,203 @@ def test_nano_fov(opt, adatas, model_name=None, hidden_dims=[512, 30], n_epochs=
     couts = couts.numpy().astype(np.float32)
     couts[couts < 0] = 0
     adata.layers['recon'] = couts
-    return adata
-    ## using Mclust
-    # print(hidden_matrix.shape)
-    # # adata = mclust_R(adata, used_obsm='pred', num_cluster=opt.ncluster)
-    # np.random.seed(opt.seed)
-    # import rpy2.robjects as robjects
-    # robjects.r.library("mclust")
-    # import rpy2.robjects.numpy2ri
-    # rpy2.robjects.numpy2ri.activate()
-    # r_random_seed = robjects.r['set.seed']
-    # r_random_seed(random_seed)
-    # rmclust = robjects.r['Mclust']
-    # print('start mclust')
-    # res = rmclust(rpy2.robjects.numpy2ri.numpy2rpy(hidden_matrix), ncluster, 'EEE', verbose=False)
-    # mclust_res = np.array(res[-2])
+    print(losses)
+    return adata, losses
 
-    # df = pd.DataFrame(mclust_res, index=adata.obs.index, columns=['mclust']).astype('category')
-    # # df['gt'] = gt_frame
-
-    # ari = adjusted_rand_score(df['mclust'], adata.obs['merge_cell_type'])
-    # print(ari)
-
-    # adata_pred = anndata.AnnData(hidden_matrix, gt_frame.index)
-    # adata_pred.obs['merge_cell_type'] = df['gt']
+# @torch.no_grad()
+# def test_nano_fov(opt, adatas, model_name=None, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_added='sigra',
+#                 gradient_clipping=5.,  weight_decay=0.0001, verbose=True, 
+#                 random_seed=0, save_loss=False, save_reconstrction=False, 
+#                 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu'),
+#                 save_path='../checkpoint/trans_gene/', ncluster=7, repeat=1):
+#     seed = random_seed
+#     import random
+#     random.seed(seed)
+#     os.environ['PYTHONHASHSEED'] = str(seed)
+#     np.random.seed(seed)
+#     torch.manual_seed(seed)
+#     torch.cuda.manual_seed(seed)
+#     os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+#     torch.backends.cudnn.deterministic = True
+#     torch.backends.cudnn.benchmark = False
     
+#     datas, imgs = [], []
+#     gt_frame = None
+#     datas, gene_dims = [], []
+#     gene_dim = 0
+#     img_dim = 0 # gene and img dim is same for all fovs
+
+#     # [fov1(feat, graph), fov2(feat, graph), fov3, ... fov20]
+#     # 
+
+#     for adata in adatas:
+#         adata.X = sp.csr_matrix(adata.X)
+#         data, img = Transfer_img_Data(adata)
+#         # print(data.x.shape, img.x.shape)
+#         gene_dim = data.x.shape[1]
+#         img_dim = img.x.shape[1]
+#         data.x = torch.cat([data.x, img.x], dim=1)
+#         # data = data.to(device)
+#         # img = img.to(device)
+#         datas.append(data)
+#         # imgs.append(img)
+        
+#         # if gt_frame is None:
+#         #     gt_frame = adata.obs['merge_cell_type']
+#         # else:
+#         #     gt_frame = pd.concat([gt_frame, adata.obs['merge_cell_type']])
+#     import anndata
+#     adata = anndata.concat(adatas)
+
+#     loader = DataLoader(datas, batch_size=1, shuffle=False)
+#     model = TransImg(hidden_dims=[gene_dim, img_dim] + hidden_dims).to(device)
+#     # torch.save(model.state_dict(), os.path.join(save_path, 'init.pth'))
+#     if model_name is not None:
+#         model.load_state_dict(torch.load(os.path.join(save_path, model_name)))
+#     else:
+#         print(os.path.join(save_path, opt.pretrain))
+#         model.load_state_dict(torch.load(os.path.join(save_path, opt.pretrain)))
+
+#     seed = random_seed
+#     import random
+#     random.seed(seed)
+#     os.environ['PYTHONHASHSEED'] = str(seed)
+#     np.random.seed(seed)
+#     torch.manual_seed(seed)
+#     torch.cuda.manual_seed(seed)
+#     os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+#     torch.backends.cudnn.deterministic = True
+#     torch.backends.cudnn.benchmark = False
+
+#     hidden_matrix = None
+#     gene_matrix = None
+#     img_matrix = None
+#     couts = None
+#     losses = 0
+#     for batch in loader:
+#         batch = batch.to(device)
+#         # print(batch)
+#         bgene = batch.x[:, :gene_dim]
+#         bimg = batch.x[:, gene_dim:]
+#         # exit(0)
+#         edge_index = batch.edge_index
+#         gz,iz,cz, gout,iout,cout = model(bgene, bimg, edge_index)
+
+#         gloss = F.mse_loss(bgene, gout)
+#         iloss = F.mse_loss(bgene, iout)
+#         closs = F.mse_loss(bgene, cout)
+#         loss = (gloss + iloss + closs) / 3
+#         losses += loss.item()
+
+#         print(cz.shape)
+#         if hidden_matrix is None:
+#             hidden_matrix = cz.detach().cpu()
+#             gene_matrix = gz.detach().cpu()
+#             couts = cout.detach().cpu()
+#             img_matrix = iz.detach().cpu()
+#         else:
+#             hidden_matrix = torch.cat([hidden_matrix, cz.detach().cpu()], dim=0)
+#             gene_matrix = torch.cat([gene_matrix, gz.detach().cpu()], dim=0)
+#             img_matrix = torch.cat([img_matrix, iz.detach().cpu()], dim=0)
+#             couts = torch.cat([couts, cout.detach().cpu()], dim=0)
+#     # exit(0)
+#     hidden_matrix = hidden_matrix.numpy()
+#     gene_matrix = gene_matrix.numpy()
+#     img_matrix = img_matrix.numpy()
+#     adata.obsm['pred'] = hidden_matrix
+#     adata.obsm['gene_pred'] = gene_matrix
+#     adata.obsm['img_pred'] = img_matrix
+#     couts = couts.numpy().astype(np.float32)
+#     couts[couts < 0] = 0
+#     adata.layers['recon'] = couts
+#     return adata, losses
+
+
+def train_nano_fov_ablation(opt, adatas, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_added='STAGATE',
+                gradient_clipping=5.,  weight_decay=0.0001, verbose=True, 
+                random_seed=0, save_loss=False, save_reconstrction=False, 
+                device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu'),
+                save_path='../checkpoint/trans_gene/', ncluster=7, repeat=1,
+                gene_weight=0.1, img_weight=0.1, combine_weight=1.0, use_img_loss=False):
+    seed = random_seed
+    import random
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    datas, gene_dims = [], []
+    gene_dim = 0
+    img_dim = 0 # gene and img dim is same for all fovs
+    for adata in adatas:
+        adata.X = sp.csr_matrix(adata.X)
+        data, img = Transfer_img_Data(adata)
+        gene_dim = data.x.shape[1]
+        img_dim = img.x.shape[1]
+        data.x = torch.cat([data.x, img.x], dim=1)
+        datas.append(data)
+    loader = DataLoader(datas, batch_size=1, shuffle=True)
+    if use_img_loss:
+        model = TransImg2(hidden_dims=[gene_dim, img_dim] + hidden_dims).to(device)
+    else:
+        model = TransImg(hidden_dims=[gene_dim, img_dim] + hidden_dims, use_img_loss=use_img_loss).to(device)
+    torch.save(model.state_dict(), os.path.join(save_path, 'init.pth'))
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    
+    seed = random_seed
+    import random
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    
+    for epoch in tqdm(range(1, n_epochs+1)):
+        # for data, img in zip(datas, imgs):
+        for i, batch in enumerate(loader):
+            model.train()
+            batch = batch.to(device)
+            optimizer.zero_grad()
+            bgene = batch.x[:, :gene_dim]
+            bimg = batch.x[:, gene_dim:]
+            edge_index = batch.edge_index
+            if not use_img_loss:
+                gz,iz,cz, gout,iout,cout = model(bgene, bimg, edge_index)
+            else:
+                iz, iout = model(bgene, bimg, edge_index)
+
+            if use_img_loss:
+                loss = F.mse_loss(bimg, iout)
+            elif img_weight == 0 and combine_weight == 0:
+                loss = F.mse_loss(bgene, gout)
+            elif gene_weight == 0 and combine_weight == 0:
+                loss = F.mse_loss(bgene, iout)
+            elif gene_weight == 0 and img_weight == 0:
+                loss = F.mse_loss(bgene, cout)
+            # gloss = F.mse_loss(bgene, gout)
+            # iloss = F.mse_loss(bgene, iout)
+            # closs = F.mse_loss(bgene, cout)
+            # loss = gene_weight * gloss + img_weight * iloss + combine_weight * closs
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), gradient_clipping)
+            optimizer.step()
+        
+        if epoch > 500 and epoch % 100 == 0:
+        # if epoch > 1:
+            torch.save(model.state_dict(), os.path.join(save_path, 'final_%d_%d.pth'%(epoch, repeat)))
+            # test_nano_fov(opt, adatas, model_name='final_%d_%d.pth'%(epoch, repeat), save_path=save_path, 
+            # ncluster=8)
+
+    torch.save(model.state_dict(), os.path.join(save_path, 'final_%d.pth'%(repeat)))
+    return adata
+
     
 def train_nano_fov(opt, adatas, hidden_dims=[512, 30], n_epochs=1000, lr=0.001, key_added='STAGATE',
                 gradient_clipping=5.,  weight_decay=0.0001, verbose=True, 

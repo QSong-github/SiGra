@@ -21,7 +21,7 @@ os.environ['LD_LIBRARY_PATH'] = '/opt/R/4.0.2/lib/R/lib'
 os.environ['PYTHONHASHSEED'] = '1234'
 os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
 
-def gen_adatas(root, id, img_name):
+def gen_adatas(opt, root, id, img_name):
     adata = sc.read(os.path.join(root, id, 'sampledata.h5ad'))
     adata.var_names_make_unique()
     sc.pp.normalize_total(adata, target_sum=1e4)
@@ -88,13 +88,13 @@ def infer(opt, r=0):
 
     adatas = list()
     for id, name in zip(ids, img_names):
-        adata = gen_adatas(opt.root, id, name)
+        adata = gen_adatas(opt, opt.root, id, name)
         adatas.append(adata)
     
     sp = opt.save_path
-    adata, _ = test_nano_fov(opt, adatas, hidden_dims=[512, 30],  n_epochs=opt.epochs, save_loss=True, 
+    adata, vlosses = test_nano_fov(opt, adatas, hidden_dims=[512, 30],  n_epochs=opt.epochs, save_loss=True, 
                 lr=opt.lr, random_seed=opt.seed, save_path=sp, ncluster=opt.ncluster, repeat=r)
-
+    
     print(adata.obsm['pred'].shape)
 
     sc.pp.neighbors(adata, use_rep='pred')
@@ -168,6 +168,7 @@ def infer(opt, r=0):
         ARI = adjusted_rand_score(obs_df['leiden'], obs_df['merge_cell_type'])
 
         print('ARI: %.2f'%ARI)
+        print(vlosses)
 
         cell_type = list(set(adata.obs['merge_cell_type']))
         ground_truth = [i for i in range(len(cell_type))]
@@ -224,7 +225,7 @@ def train(opt, r=0):
 
     adatas = list()
     for id, name in zip(ids, img_names):
-        adata = gen_adatas(opt.root, id, name)
+        adata = gen_adatas(opt, opt.root, id, name)
         adatas.append(adata)
 
     sp = os.path.join(opt.save_path, 'all')

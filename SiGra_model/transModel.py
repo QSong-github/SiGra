@@ -113,21 +113,21 @@ class TransImg2(torch.nn.Module):
         [in_dim, img_dim, num_hidden, out_dim] = hidden_dims
         # [in_dim, emb_dim, img_dim, num_hidden, out_dim] = hidden_dims
 
-        self.conv1 = TransformerConv(in_dim, num_hidden)#, heads=1, dropout=0.1, beta=True)
-        # self.conv1 = TransformerConv(in_dim + emb_dim, num_hidden)#, heads=1, dropout=0.1, beta=True)
-        self.conv2 = TransformerConv(num_hidden, out_dim)#, heads=1, dropout=0.1, beta=True)
-        self.conv3 = TransformerConv(out_dim, num_hidden)#, heads=1, dropout=0.1, beta=True)
-        self.conv4 = TransformerConv(num_hidden, in_dim)#, heads=1, dropout=0.1, beta=True)
+        # self.conv1 = TransformerConv(in_dim, num_hidden)#, heads=1, dropout=0.1, beta=True)
+        # # self.conv1 = TransformerConv(in_dim + emb_dim, num_hidden)#, heads=1, dropout=0.1, beta=True)
+        # self.conv2 = TransformerConv(num_hidden, out_dim)#, heads=1, dropout=0.1, beta=True)
+        # self.conv3 = TransformerConv(out_dim, num_hidden)#, heads=1, dropout=0.1, beta=True)
+        # self.conv4 = TransformerConv(num_hidden, in_dim)#, heads=1, dropout=0.1, beta=True)
 
         self.imgconv1 = TransformerConv(img_dim, num_hidden)#, heads=1, dropout=0.1, beta=True)
         self.imgconv2 = TransformerConv(num_hidden, out_dim)#, heads=1, dropout=0.1, beta=True)
         self.imgconv3 = TransformerConv(out_dim, num_hidden)#, heads=1, dropout=0.1, beta=True)
         self.imgconv4 = TransformerConv(num_hidden, img_dim)#, heads=1, dropout=0.1, beta=True)
 
-        self.neck = TransformerConv(out_dim * 2, out_dim)#, heads=1, dropout=0.1, beta=True)
-        self.neck2 = TransformerConv(out_dim, out_dim)#, heads=1, dropout=0.1, beta=True)
-        self.c3 = TransformerConv(out_dim, num_hidden)#, heads=1, dropout=0.1, beta=True)
-        self.c4 = TransformerConv(num_hidden, in_dim)#, heads=1, dropout=0.1, beta=True)
+        # self.neck = TransformerConv(out_dim * 2, out_dim)#, heads=1, dropout=0.1, beta=True)
+        # self.neck2 = TransformerConv(out_dim, out_dim)#, heads=1, dropout=0.1, beta=True)
+        # self.c3 = TransformerConv(out_dim, num_hidden)#, heads=1, dropout=0.1, beta=True)
+        # self.c4 = TransformerConv(num_hidden, in_dim)#, heads=1, dropout=0.1, beta=True)
 
         # layernorm 
         self.norm1 = LayerNorm(num_hidden)
@@ -136,25 +136,76 @@ class TransImg2(torch.nn.Module):
         self.activate = F.elu
 
     def forward(self, features, img_feat, edge_index):
-        h1 = self.activate(self.conv1(features, edge_index))
-        h2 = self.conv2(h1, edge_index)
-        h3 = self.activate(self.conv3(h2, edge_index))
-        h4 = self.conv4(h3, edge_index)
+        # h1 = self.activate(self.conv1(features, edge_index))
+        # h2 = self.conv2(h1, edge_index)
+        # h3 = self.activate(self.conv3(h2, edge_index))
+        # h4 = self.conv4(h3, edge_index)
 
         img1 = self.activate(self.imgconv1(img_feat, edge_index))
         img2 = self.imgconv2(img1, edge_index)
         img3 = self.activate(self.imgconv3(img2, edge_index))
         img4 = self.imgconv4(img3, edge_index)
 
-        concat = torch.cat([h2, img2], dim=1)
-        combine = self.activate(self.neck(concat, edge_index))
-        c2 = self.neck2(combine, edge_index)
-        c3 = self.activate(self.c3(c2, edge_index))
-        c4 = self.c4(c3, edge_index)
+        # concat = torch.cat([h2, img2], dim=1)
+        # combine = self.activate(self.neck(concat, edge_index))
+        # c2 = self.neck2(combine, edge_index)
+        # c3 = self.activate(self.c3(c2, edge_index))
+        # c4 = self.c4(c3, edge_index)
 
-        return h2, img2, c2, h4, img4, c4
+        # return h2, img2, c2, h4, img4, c4
+        return img2, img4
 
 
+
+# class TransImg(torch.nn.Module):
+#     def __init__(self, hidden_dims, use_img_loss=False):
+#         super().__init__()
+#         [in_dim, img_dim, num_hidden, out_dim] = hidden_dims
+#         # [in_dim, emb_dim, img_dim, num_hidden, out_dim] = hidden_dims
+
+#         self.conv1 = TransformerConv(in_dim, num_hidden)
+#         self.conv2 = TransformerConv(num_hidden, out_dim)
+#         self.conv3 = TransformerConv(out_dim, num_hidden)
+#         self.conv4 = TransformerConv(num_hidden, in_dim)
+
+#         self.imgconv1 = TransformerConv(img_dim, num_hidden)
+#         self.imgconv2 = TransformerConv(num_hidden, out_dim)
+#         self.imgconv3 = TransformerConv(out_dim, num_hidden)
+#         if use_img_loss:
+#             self.imgconv4 = TransformerConv(num_hidden, img_dim)
+#         else:
+#             self.imgconv4 = TransformerConv(num_hidden, in_dim)
+
+#         self.neck = TransformerConv(out_dim * 2, out_dim)
+#         self.neck2 = TransformerConv(out_dim, out_dim)
+#         self.c3 = TransformerConv(out_dim, num_hidden)
+#         self.c4 = TransformerConv(num_hidden, in_dim)
+
+#         # layernorm 
+#         self.norm1 = LayerNorm(num_hidden)
+#         self.norm2 = LayerNorm(out_dim)
+#         # relu
+#         self.activate = F.elu
+
+#     def forward(self, features, img_feat, edge_index):
+#         h1 = self.activate(self.conv1(features, edge_index))
+#         h2 = self.conv2(h1, edge_index)
+#         h3 = self.activate(self.conv3(h2, edge_index))
+#         h4 = self.conv4(h3, edge_index)
+
+#         img1 = self.activate(self.imgconv1(img_feat, edge_index))
+#         img2 = self.imgconv2(img1, edge_index)
+#         img3 = self.activate(self.imgconv3(img2, edge_index))
+#         img4 = self.imgconv4(img3, edge_index)
+
+#         concat = torch.cat([h2, img2], dim=1)
+#         combine = self.activate(self.neck(concat, edge_index))
+#         c2 = self.neck2(combine, edge_index)
+#         c3 = self.activate(self.c3(c2, edge_index))
+#         c4 = self.c4(c3, edge_index)
+
+#         # print(h4.shape, img4.shape, c4.shape)
+#         return h2, img2, c2, h4, img4, c4
 
 class TransImg(torch.nn.Module):
     def __init__(self, hidden_dims, use_img_loss=False):

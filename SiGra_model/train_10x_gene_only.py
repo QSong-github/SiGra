@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import scanpy as sc
 from sklearn.metrics.cluster import adjusted_rand_score
-from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
+# from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
 import numpy as np
 import cv2
 import torchvision.transforms as transforms
@@ -69,7 +69,7 @@ def infer(opt, result_path='../results/10x_final/'):
     Cal_Spatial_Net(adata, rad_cutoff=150)
 
     model_path = os.path.join(os.path.join(opt.save_path, opt.id, opt.pretrain))
-    adata, _ = test_img(adata, model_path, hidden_dims=[512, 30])
+    adata = test_img(adata, model_path, hidden_dims=[512, 30])
     adata = mclust_R(adata, used_obsm='pred', num_cluster=opt.ncluster)
     obs_df = adata.obs.dropna()
     ARI = adjusted_rand_score(obs_df['mclust'], obs_df['Ground Truth'])
@@ -80,13 +80,6 @@ def infer(opt, result_path='../results/10x_final/'):
     save_path = os.path.join(result_path, opt.id)
     if not os.path.exists(save_path):
         os.makedirs(save_path)
-
-    plt.rcParams["figure.figsize"] = (3, 3)
-    sc.settings.figdir = save_path
-    ax=sc.pl.spatial(adata, color=['Ground Truth'], title=['Ground Truth'], show=False)
-    plt.savefig(os.path.join(save_path, 'gt_spatial.pdf'), bbox_inches='tight')
-    print(save_path)
-    # return 0
 
     plt.rcParams["figure.figsize"] = (3, 3)
     sc.settings.figdir = save_path
@@ -103,59 +96,29 @@ def infer(opt, result_path='../results/10x_final/'):
     # adata.write(os.path.join(save_path, 'results.h5ad'))
     if opt.id == '151507':
         # plot_genes = ['RELN', 'C1QL2', 'ADCYAP1', 'SYT2', 'PCP4', 'SEMA3E', 'MBP']
-        # plot_genes = ['RELN', 'C1QL2', 'ADCYAP1', 'SYT2', 'PCP4', 'SEMA3E', ]#, 'MBP']
-        plot_genes = ['HPCAL1', 'KRT17',  'AQP4'] # 'TRABD2A', 'Lam5', 'FREM3'
+        plot_genes = ['RELN', 'C1QL2', 'ADCYAP1', 'SYT2', 'PCP4', 'SEMA3E']#, 'MBP']
     elif opt.id == '151676':
-        # plot_genes = ['MYH11', 'C1QL2', 'CUX2', 'SYT2', 'PCP4', 'SEMA3E']#, 'MBP']
-        # plot_genes = ['HPCAL1', 'KRT17',  'AQP4', 'TRABD2A', 'FREM3']
-        plot_genes = ['HPCAL1', 'KRT17', 'TRABD2A', 'AQP4', 'RELN', 'LAMP5', 'FREM3'] # 'FREM3',
-    elif opt.id == '151673':
-        plot_genes = ['HPCAL1', 'KRT17', 'TRABD2A', 'AQP4', 'RELN', 'LAMP5'] # 'FREM3',
+        plot_genes = ['MYH11', 'C1QL2', 'CUX2', 'SYT2', 'PCP4', 'SEMA3E']#, 'MBP']
     else:
-        # save the embeddings
-        plot_genes = ['PCP4']
+        return ARI
 
-    print(os.path.join(save_path, 'selected_genes2'))
-    if not os.path.exists(os.path.join(save_path, 'selected_genes2')):
-        os.makedirs(os.path.join(save_path, 'selected_genes2'))
+    if not os.path.exists(os.path.join(save_path, 'selected_genes')):
+        os.makedirs(os.path.join(save_path, 'selected_genes'))
 
     for plot_gene in plot_genes:
         fig, axs = plt.subplots(1, 2, figsize=(8, 4))
         sc.pl.spatial(adata, img_key="hires", color=plot_gene, show=False, title="Raw_"+plot_gene, vmax='p99', ax=axs[0])
-        sc.pl.spatial(adata, img_key="hires", color=plot_gene, show=False, title="sigra_"+plot_gene, layer='recon', vmax='p99', ax=axs[1])
-        plt.savefig(os.path.join(save_path, 'selected_genes2', '%s.png'%(plot_gene)))
-        plt.savefig(os.path.join(save_path, 'selected_genes2', '%s.pdf'%(plot_gene)))
+        sc.pl.spatial(adata, img_key="hires", color=plot_gene, show=False, title="scGIT_"+plot_gene, layer='recon', vmax='p99', ax=axs[1])
+        plt.savefig(os.path.join(save_path, 'selected_genes', '%s.png'%(plot_gene)))
+        plt.savefig(os.path.join(save_path, 'selected_genes', '%s.pdf'%(plot_gene)))
 
         plt.close()
 
     fig, axs = plt.subplots(1,2, figsize=(8,4))
-    sc.pl.stacked_violin(adata, plot_genes, groupby='mclust', ax=axs[0], title='sigra_RAW', show=False, vmax=0.3)#, save='Violin_raw.pdf')
-    sc.pl.stacked_violin(adata, plot_genes, groupby='mclust', ax=axs[1], title='sigra_RECON', show=False, layer='recon', vmax=0.5)#, save='Violin_recon.pdf')
-    plt.savefig(os.path.join(save_path, 'selected_genes2', 'heatmap.pdf'))
+    sc.pl.stacked_violin(adata, plot_genes, groupby='mclust', ax=axs[0], title='scGIT_RAW', show=False, vmax=0.3)#, save='Violin_raw.pdf')
+    sc.pl.stacked_violin(adata, plot_genes, groupby='mclust', ax=axs[1], title='scGIT_RECON', show=False, layer='recon', vmax=0.5)#, save='Violin_recon.pdf')
+    plt.savefig(os.path.join(save_path, 'selected_genes', 'heatmap.png'))
     plt.close()
-
-    # print(adata)
-
-    # write df
-    df = pd.DataFrame(adata.layers['recon'], index=adata.obs.index, columns=adata.var.index)
-    # df.to_csv(os.path.join('%s/%s/%s_recon.csv'%(opt.save_path, opt.id, opt.id)))
-
-    df2 = pd.DataFrame(adata.obs['mclust'], index=adata.obs.index)
-    df2['Ground Truth'] = adata.obs['Ground Truth']
-    X_umap = adata.obsm['X_umap']
-    spatial_xy = adata.obsm['spatial']
-
-    df2['umap_x'] = X_umap[:,0]
-    df2['umap_y'] = X_umap[:,1]
-    df2['spa_x'] = spatial_xy[:, 0]
-    df2['spa_y'] = spatial_xy[:, 0]
-
-    # df2.to_csv(os.path.join('%s/%s/%s_meta.csv'%(opt.save_path, opt.id, opt.id)))
-    # adata.obs.columns = adata.obs.columns.astype(str)
-    # adata.var.columns = adata.var.columns.astype(str)
-
-    adata.obsm['imgs']= adata.obsm['imgs'].to_numpy()
-    adata.write('%s/%s/%s_results.h5ad'%(opt.save_path, opt.id, opt.id))
 
     return ARI
 
@@ -193,12 +156,8 @@ def train(opt, r):
     if not os.path.exists(sp):
         os.makedirs(sp)
     
-    # adata = train_img(adata, hidden_dims=[512, 30],  n_epochs=opt.epochs, save_loss=True, 
-    #             lr=opt.lr, random_seed=opt.seed, save_path=sp, ncluster=opt.ncluster, repeat=r, use_combine=0, use_img_loss=1)
-
     adata = train_img(adata, hidden_dims=[512, 30],  n_epochs=opt.epochs, save_loss=True, 
                 lr=opt.lr, random_seed=opt.seed, save_path=sp, ncluster=opt.ncluster, repeat=r, use_combine=0, use_img_loss=1)
-
 
     # we use mclust for 10x dataset
     if opt.cluster_method == 'mclust':
@@ -208,21 +167,6 @@ def train(opt, r):
 
         print('ari is %.2f'%(ARI))
         return ARI
-
-# if __name__ == "__main__":
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument('--lr', type=float, default=1e-3)
-#     parser.add_argument('--root', type=str, default='../dataset/DLPFC')
-#     parser.add_argument('--epochs', type=int, default=1000)
-#     parser.add_argument('--id', type=str, default='151673')
-#     parser.add_argument('--seed', type=int, default=1234)
-#     parser.add_argument('--save_path', type=str, default='../checkpoint/transformer_final')
-#     parser.add_argument('--ncluster', type=int, default=7)
-#     parser.add_argument('--repeat', type=int, default=5)
-#     parser.add_argument('--use_gray', type=float, default=0)
-#     parser.add_argument('--test_only', type=int, default=0)
-#     parser.add_argument('--pretrain', type=str, default='final.pth')
-#     opt = parser.parse_args()
 
 def train_10x(opt):
     opt.cluster_method = 'mclust'
@@ -237,3 +181,19 @@ def train_10x(opt):
             ARI = train(opt, i)
             logger.write('%.2f\n'%(ARI))
             print('ARI is %.2f' %(ARI))
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--root', type=str, default='../dataset/DLPFC')
+    parser.add_argument('--epochs', type=int, default=1000)
+    parser.add_argument('--id', type=str, default='151673')
+    parser.add_argument('--seed', type=int, default=1234)
+    parser.add_argument('--save_path', type=str, default='../checkpoint/transformer_final')
+    parser.add_argument('--ncluster', type=int, default=7)
+    parser.add_argument('--repeat', type=int, default=5)
+    parser.add_argument('--use_gray', type=float, default=0)
+    parser.add_argument('--test_only', type=int, default=0)
+    parser.add_argument('--pretrain', type=str, default='final.pth')
+    opt = parser.parse_args()
