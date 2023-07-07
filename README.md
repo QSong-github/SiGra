@@ -1,4 +1,7 @@
 # SiGra: Single-cell spatial elucidation through image-augmented graph transformer
+
+[![DOI](https://zenodo.org/badge/524541646.svg)](https://zenodo.org/badge/latestdoi/524541646)
+
 The recent advances in high-throughput molecular imaging push the spatial transcriptomics technologies to the subcellular resolution, which breaks the limitations of both single-cell RNA-seq and array-based spatial profiling. The latest released single-cell spatial transcriptomics data from NanoString CosMx and MERSCOPE platforms contains multi-channel immunohistochemistry images with rich information of cell types, functions, and morphologies of cellular compartments. In this work, we developed a novel method, Single-cell spatial elucidation through image-augmented Graph transformer (SiGra), to reveal spatial domains and enhance the substantially sparse and noisy transcriptomics data. SiGra applies hybrid graph transformers over a spatial graph that comprises high-content images and gene expressions of individual cells. SiGra outperformed state-of-the-art methods on both single-cell spatial profiles and spot-level spatial transcriptomics data from complex tissues. The inclusion of immunohistochemistry images improved the model performance by 37% (95%CI: 27% – 50%). SiGra improves the characterization of intratumor heterogeneity and intercellular communications in human lung cancer samples, meanwhile recovers the known microscopic anatomy in both human brain and mouse liver tissues. Overall, SiGra effectively integrates different spatial modality data to gain deep insights into the spatial cellular ecosystems.
 
 ![Image text](https://github.com/QSong-github/SiGra/blob/main/Figure.png)
@@ -159,3 +162,10 @@ And you can use the bash scripts to train all slices:
 sh train_visium.sh
 ```
 
+## Cite
+
+Please cite our paper if you use this code in your own work:
+
+```
+Tang Z, Zhang T, Yang B, Su J, Song Q. SiGra: Single-cell spatial elucidation through image-augmented graph transformer. bioRxiv. 2022 Aug 19:2022-08.
+```
